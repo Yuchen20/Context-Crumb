@@ -1,8 +1,6 @@
-<!-- Banner: add docs/assets/contextcrumb-banner.png, then uncomment:
 <p align="center">
   <img src="docs/assets/contextcrumb-banner.png" alt="ContextCrumb banner" width="100%" />
 </p>
--->
 
 <h1 align="center">ContextCrumb</h1>
 
@@ -11,11 +9,10 @@
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/contextcrumb/"><img src="https://img.shields.io/pypi/v/contextcrumb?style=flat&color=blue" alt="PyPI version"></a>
-  <a href="https://pypi.org/project/contextcrumb/"><img src="https://img.shields.io/pypi/pyversions/contextcrumb?style=flat" alt="Python versions"></a>
-  <a href="https://pepy.tech/project/contextcrumb"><img src="https://static.pepy.tech/badge/contextcrumb" alt="PyPI downloads"></a>
-  <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/huggingface/dt/ymao20/contextcrumb-32m?style=flat&label=model%20downloads&color=ffcc4d" alt="Hugging Face model downloads"></a>
-  <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/huggingface/likes/ymao20/contextcrumb-32m?style=flat&label=model%20likes" alt="Hugging Face model likes"></a>
+  <img src="https://img.shields.io/badge/python-%3E%3D3.10-blue?style=flat" alt="Python >=3.10">
+  <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/badge/model-contextcrumb--32m-ffcc4d?style=flat" alt="Hugging Face model"></a>
+  <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fhuggingface.co%2Fapi%2Fmodels%2Fymao20%2Fcontextcrumb-32m&query=%24.downloads&label=model%20downloads&color=ffcc4d&style=flat" alt="Hugging Face model downloads"></a>
+  <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fhuggingface.co%2Fapi%2Fmodels%2Fymao20%2Fcontextcrumb-32m&query=%24.likes&label=model%20likes&color=ffcc4d&style=flat" alt="Hugging Face model likes"></a>
   <a href="https://github.com/Yuchen20/Context-Crumb/stargazers"><img src="https://img.shields.io/github/stars/Yuchen20/Context-Crumb?style=flat&color=yellow" alt="GitHub stars"></a>
   <a href="https://github.com/Yuchen20/Context-Crumb/commits/main"><img src="https://img.shields.io/github/last-commit/Yuchen20/Context-Crumb?style=flat" alt="Last commit"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Yuchen20/Context-Crumb?style=flat" alt="License"></a>
@@ -40,7 +37,15 @@ LLM context gets messy fast: meeting notes, logs, issue threads, docs, transcrip
 
 That is the idea behind the name: the context is still there, but the loose crumbs are shaken off before they reach your model. Less bloat in the prompt. More room for the parts that matter.
 
-Try it in the hosted playground: [ContextCrumb-32M Demo](https://huggingface.co/spaces/ymao20/contextcrumb-32m-demo).
+<p align="center">
+  <a href="https://huggingface.co/spaces/ymao20/contextcrumb-32m-demo">
+    <img src="https://img.shields.io/badge/Try%20the%20playground-ContextCrumb--32M%20Demo-ffcc4d?style=for-the-badge" alt="Try the ContextCrumb-32M Demo">
+  </a>
+</p>
+
+<p align="center">
+  <sub>No install needed. Paste text, compare the kept context, and see what gets shaken off.</sub>
+</p>
 
 <h2 id="before-after">Before / After</h2>
 
