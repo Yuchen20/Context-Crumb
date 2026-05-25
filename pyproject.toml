@@ -1,0 +1,100 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "contextcrumb"
+version = "0.1.0"
+description = "Token-level context compression for LLM and agent workflows."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = [
+    "huggingface-hub>=0.27",
+    "numpy>=1.24",
+    "onnxruntime==1.20.0",
+    "tokenizers>=0.20",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+authors = [
+    { name = "Yuchen Mao", email = "yuchenmao2024@163.com" },
+]
+maintainers = [
+    { name = "Yuchen Mao", email = "yuchenmao2024@163.com" },
+]
+
+keywords = [
+    "context-compression",
+    "optimization",
+    "llm",
+    "agents",
+    "mcp",
+    "token-classification",
+]
+
+
+[project.scripts]
+contextcrumb = "contextcrumb.cli:main"
+contextcrumb-mcp = "contextcrumb.mcp_server:main"
+contextcrumb-shrink = "contextcrumb.mcp_shrink:main"
+
+[project.optional-dependencies]
+space = [
+    "gradio>=4.44",
+]
+torch = [
+    "torch>=2.1",
+    "transformers>=4.48",
+]
+export = [
+    "onnx>=1.16",
+    "optimum-onnx>=0.1.0",
+    "torch>=2.1",
+    "transformers>=4.48,<4.58",
+]
+serve = [
+    "fastapi>=0.136",
+    "uvicorn>=0.47",
+]
+mcp = [
+    "mcp[cli]>=1,<2",
+]
+dev = [
+    "build>=1.2",
+    "fastapi>=0.136",
+    "pytest>=8",
+    "uvicorn>=0.47",
+    "wheel>=0.43",
+]
+
+[project.urls]
+Homepage = "https://huggingface.co/ymao20/contextcrumb-32m"
+Repository = "https://github.com/Yuchen20/Context-Crumb"
+"Bug Tracker" = "https://github.com/Yuchen20/Context-Crumb/issues"
+Changelog = "https://github.com/Yuchen20/Context-Crumb/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["contextcrumb*"]
+
+[tool.setuptools.package-data]
+contextcrumb = ["py.typed"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

@@ -49,6 +49,7 @@ coverage.xml
 *.py.cover
 .hypothesis/
 .pytest_cache/
+.playwright-mcp/
 cover/
 
 # Translations
@@ -157,6 +158,26 @@ ENV/
 env.bak/
 venv.bak/
 
+# Local datasets, model snapshots, and generated experiment outputs
+labs/
+deploy/
+data/
+models/
+outputs/
+notebooks/
+artifacts/
+.internal/
+contextcrumb-gradio-demo.png
+CodeGraveYard/
+
+# Large generated ML artifacts
+*.parquet
+*.onnx
+*.safetensors
+*.npy
+*.npz
+*.pkl
+
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -216,3 +237,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# skills
+.agents/
+.antigravitycli/
+.playwright-mcp/
