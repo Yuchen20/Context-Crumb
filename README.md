@@ -1,10 +1,11 @@
 <h1 align="center">ContextCrumb</h1>
 <p align="center">
-  <img src="docs/assets/contextcrumb-banner.png" alt="ContextCrumb banner" width="100%" />
-</p>
-<p align="center">
   <strong>Shake the crumbs out of bloated context.</strong>
 </p>
+<p align="center">
+  <img src="docs/assets/contextcrumb-banner.png" alt="ContextCrumb banner" width="100%" />
+</p>
+
 
 <p align="center">
   <!-- <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/badge/model-contextcrumb--32m-ffcc4d?style=flat" alt="Hugging Face model"></a> -->

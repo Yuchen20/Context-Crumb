@@ -5,3 +5,4 @@ tokenizers>=0.20
 fastapi>=0.136
 uvicorn>=0.47
 mcp[cli]>=1,<2
+twine
