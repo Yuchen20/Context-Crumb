@@ -1,22 +1,20 @@
+<h1 align="center">ContextCrumb</h1>
 <p align="center">
   <img src="docs/assets/contextcrumb-banner.png" alt="ContextCrumb banner" width="100%" />
 </p>
-
-<h1 align="center">ContextCrumb</h1>
-
 <p align="center">
   <strong>Shake the crumbs out of bloated context.</strong>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/python-%3E%3D3.10-blue?style=flat" alt="Python >=3.10">
-  <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/badge/model-contextcrumb--32m-ffcc4d?style=flat" alt="Hugging Face model"></a>
+  <!-- <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/badge/model-contextcrumb--32m-ffcc4d?style=flat" alt="Hugging Face model"></a> -->
   <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fhuggingface.co%2Fapi%2Fmodels%2Fymao20%2Fcontextcrumb-32m&query=%24.downloads&label=model%20downloads&color=ffcc4d&style=flat" alt="Hugging Face model downloads"></a>
-  <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fhuggingface.co%2Fapi%2Fmodels%2Fymao20%2Fcontextcrumb-32m&query=%24.likes&label=model%20likes&color=ffcc4d&style=flat" alt="Hugging Face model likes"></a>
+  <!-- <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fhuggingface.co%2Fapi%2Fmodels%2Fymao20%2Fcontextcrumb-32m&query=%24.likes&label=model%20likes&color=ffcc4d&style=flat" alt="Hugging Face model likes"></a> -->
   <a href="https://github.com/Yuchen20/Context-Crumb/stargazers"><img src="https://img.shields.io/github/stars/Yuchen20/Context-Crumb?style=flat&color=yellow" alt="GitHub stars"></a>
   <a href="https://github.com/Yuchen20/Context-Crumb/commits/main"><img src="https://img.shields.io/github/last-commit/Yuchen20/Context-Crumb?style=flat" alt="Last commit"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/Yuchen20/Context-Crumb?style=flat" alt="License"></a>
+  <!-- <a href="LICENSE"><img src="https://img.shields.io/github/license/Yuchen20/Context-Crumb?style=flat" alt="License"></a> -->
   <img src="https://visitor-badge.laobi.icu/badge?page_id=Yuchen20.Context-Crumb" alt="Visitors">
+  <img src="https://img.shields.io/badge/python-%3E%3D3.10-blue?style=flat" alt="Python >=3.10">
 </p>
 
 <p align="center">
@@ -41,9 +39,7 @@ That is the idea behind the name: the context is still there, but the loose crum
   <a href="https://huggingface.co/spaces/ymao20/contextcrumb-32m-demo">
     <img src="https://img.shields.io/badge/Try%20the%20playground-ContextCrumb--32M%20Demo-ffcc4d?style=for-the-badge" alt="Try the ContextCrumb-32M Demo">
   </a>
-</p>
-
-<p align="center">
+  <br />
   <sub>No install needed. Paste text, compare the kept context, and see what gets shaken off.</sub>
 </p>
 
