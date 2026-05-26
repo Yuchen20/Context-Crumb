@@ -253,6 +253,25 @@ class CliTests(unittest.TestCase):
         self.assertIn("Source:", output.getvalue())
         self.assertIn("Tokens:", output.getvalue())
 
+    def test_cli_inspect_json_outputs_stats_only(self):
+        fake = FakeCompressor()
+        output = io.StringIO()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = Path(temp_dir) / "input.txt"
+            input_path.write_text("file text", encoding="utf-8")
+
+            with patch("contextcrumb.cli.ContextCompressor", return_value=fake):
+                with redirect_stdout(output):
+                    exit_code = main(["inspect", str(input_path), "--json"])
+
+        payload = json.loads(output.getvalue())
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(set(payload), {"stats"})
+        self.assertEqual(payload["stats"]["source_path"], str(input_path))
+        self.assertNotIn("text", payload)
+        self.assertNotIn("original_text", payload)
+
     def test_cli_diff_marks_deleted_tokens(self):
         fake = FakeCompressor()
         output = io.StringIO()

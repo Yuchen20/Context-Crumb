@@ -1,106 +1,68 @@
 ---
 name: contextcrumb
-description: Use when an agent needs to compress large prose-heavy files before sending them into LLM context. Best for Markdown docs, notes, issue threads, logs with narrative text, research dumps, and other natural-language files where useful information density matters more than every filler token.
+description: Compress large prose-heavy local text before adding it to LLM context. Use for docs, notes, transcripts, threads, logs, and research dumps.
 ---
 
 # ContextCrumb
 
-## Purpose
+Use ContextCrumb when a large local text file is mostly natural language and would otherwise bloat the context window. The compressed output is the working context, not a preview.
 
-Use ContextCrumb to compress large local text files before they enter an LLM context window. It deletes lower-value words and punctuation while keeping the remaining text in original order.
+Do not read large candidate files with `cat`, `Get-Content`, `type`, or similar raw file dumps before compression. Inventory names first, then use `contextcrumb load` to read compressed context.
 
-ContextCrumb is for context compression, token savings, and context-bloat control. It is not a preview step. For prose-heavy inputs, the compressed output is the context you work from.
+## Use For
 
-## When To Use
+- Documentation, Markdown, notes, transcripts, threads, logs, and research dumps
+- Prose-heavy local text where compression is acceptable before LLM reading
+- Folders of natural-language text files when you need sampled or batched context loading
 
-Use it for large natural-language files:
+## Do Not Use For
 
-- Documentation and Markdown
-- Notes and research dumps
-- Issue threads and long discussions
-- Logs with lots of prose
-- Long comments or narrative text
+- Source code, diffs, configs, schemas, commands, or structured data
+- Legal text, policy text, contracts, or compliance material
+- Any task that requires exact syntax, exact wording, exact formatting, or precise quotes
 
-## When Not To Use
+## Quick Workflow
 
-Do not rely on compressed output for exact syntax or exact wording:
+Inventory without reading file bodies:
 
-- Source code
-- Config files
-- Diffs and patches
-- JSON, YAML, TOML, XML, or schemas
-- Commands that may need to be copied exactly
-- Legal, compliance, policy, or contract text
+```sh
+rg --files <directory>
+```
 
-Only fall back to raw source when the task depends on exact syntax, exact wording, or exact formatting. If a natural-language file is simply large and prose-heavy, ContextCrumb output can be used directly as compressed context.
+Check the CLI:
 
-## Default Workflow
-
-First, check whether the `contextcrumb` CLI is available:
-
-```powershell
+```sh
 contextcrumb --help
 ```
 
-If the command exists, use golden mode by default:
+If it is not on PATH, try the module form before installing:
 
-```powershell
+```sh
+python -m contextcrumb --help
+```
+
+Read compressed context, not raw file contents:
+
+```sh
 contextcrumb load <file>
 ```
 
-If the command is missing, install the Python package once:
+Use `inspect` only when you need diagnostics or savings stats without reading the text:
 
-```powershell
-python -m pip install contextcrumb
-```
-
-Then compress the file:
-
-```powershell
-contextcrumb load <file>
-```
-
-If the environment has `uvx`, it can be used as an optional no-install path, but do not assume it is available:
-
-```powershell
-uvx --from contextcrumb contextcrumb load <file>
-```
-
-Golden mode chooses an adaptive cutoff for each file and is the preferred default because it is conservative. If the output is still too large, use a fixed keep ratio:
-
-```powershell
-contextcrumb load <file> --target-keep-ratio 0.75
-contextcrumb load <file> --target-keep-ratio 0.5
-```
-
-Avoid aggressive ratios unless the user explicitly asks for heavy compression.
-
-## Validation
-
-Check compression savings without dumping the full output:
-
-```powershell
+```sh
 contextcrumb inspect <file>
 ```
 
-Check what was removed when you want to understand or tune the compression:
+Compress a folder of text files:
 
-```powershell
-contextcrumb diff <file>
+```sh
+contextcrumb batch <directory> --glob '*.md' --out <output-dir> --no-stats
 ```
 
-Use JSON only when another tool needs stats:
+For detailed options, batch usage, JSON, services, and examples, run `contextcrumb --help` and subcommand help such as `contextcrumb load --help`.
 
-```powershell
-contextcrumb load <file> --json
-```
+## Safety
 
-Read the `text` field as compressed context. Use `stats.token_keep_ratio`, `stats.word_keep`, and `stats.model_windows` to decide whether to retry with a different setting.
+When exactness matters, use the raw source instead of compressed output.
 
-## Practical Rules
-
-- Use `contextcrumb load <file>` as the default.
-- If `contextcrumb` is missing, install it with `python -m pip install contextcrumb`.
-- Use `uvx --from contextcrumb contextcrumb load <file>` only when `uvx` is already available.
-- Use `inspect` and `diff` when you want to understand or tune compressed text.
-- Never edit code, copy commands, or quote exact wording based only on compressed output.
+If loaded output is still too large, try `--target-keep-ratio 0.75` or `0.5`. Aggressive compression can damage structure in links, tables, code blocks, and command examples.

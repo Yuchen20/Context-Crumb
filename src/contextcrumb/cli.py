@@ -135,15 +135,28 @@ def build_parser() -> argparse.ArgumentParser:
         description="Compress context with ContextCrumb-32M.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
-            "Agent usage:\n"
-            "  Use `contextcrumb load FILE` when a coding or research agent needs to read a large\n"
-            "  local text file before sending it to an LLM. The command returns compressed text by\n"
-            "  default, so it can be used as a drop-in context-loading step.\n"
+            "Agent workflow:\n"
+            "  1. Inventory filenames/sizes first; do not cat/type/Get-Content large candidate\n"
+            "     files into the conversation before compression.\n"
+            "  2. Use `contextcrumb load FILE` to read large prose-heavy local text as compressed\n"
+            "     LLM context. This is the default read path for agents.\n"
+            "  3. Use `contextcrumb inspect FILE` only when you need token/word savings or other\n"
+            "     diagnostics without reading the text.\n"
+            "  4. Use `contextcrumb batch DIR --glob '*.md' --out OUT --no-stats` for many files;\n"
+            "     sample or inspect outputs before relying on them.\n"
+            "  5. Use `python -m contextcrumb ...` if the package is installed but the console\n"
+            "     script is not on PATH.\n"
+            "\n"
+            "Safety:\n"
+            "  Do not rely on compressed output for exact code, diffs, configs, commands, legal\n"
+            "  text, policy text, quotes, or formatting. Use raw source when exactness matters.\n"
+            "  If `--json` hits terminal Unicode errors, set PYTHONIOENCODING=utf-8.\n"
             "\n"
             "Examples:\n"
             "  contextcrumb load README.md\n"
-            "  contextcrumb load notes.txt --target-keep-ratio 0.35\n"
-            "  contextcrumb load transcript.txt --json\n"
+            "  contextcrumb inspect notes.txt\n"
+            "  contextcrumb load notes.txt --target-keep-ratio 0.5\n"
+            "  contextcrumb batch docs --glob '*.md' --out /tmp/contextcrumb-docs --no-stats\n"
         ),
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -452,6 +465,13 @@ def format_inspection(result: CompressionResult) -> str:
     return "\n".join(lines)
 
 
+def inspection_payload(result: CompressionResult, *, include_tokens: bool = False) -> dict[str, object]:
+    payload: dict[str, object] = {"stats": result.stats}
+    if include_tokens:
+        payload["tokens"] = [token.to_dict() for token in result.tokens]
+    return payload
+
+
 def render_token_diff(original: str, decisions: Sequence[TokenDecision]) -> str:
     if not decisions:
         return original
@@ -551,7 +571,7 @@ def run_inspect(args: argparse.Namespace) -> int:
                 raise SystemExit("Input file is empty.") from error
             raise
     if args.json:
-        print(json.dumps(result.to_dict(include_tokens=False), ensure_ascii=False, indent=2))
+        print(json.dumps(inspection_payload(result, include_tokens=args.return_tokens), ensure_ascii=False, indent=2))
     else:
         print(format_inspection(result))
     return 0
