@@ -12,4 +12,4 @@ For machine-readable output, run:
 contextcrumb stats --json
 ```
 
-Do not estimate savings from transcripts. ContextCrumb records direct compression savings in its local JSONL ledger.
+Do not estimate savings from examples. ContextCrumb records direct compression savings in its local JSONL ledger.

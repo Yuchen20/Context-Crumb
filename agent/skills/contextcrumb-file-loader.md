@@ -1,6 +1,6 @@
 # ContextCrumb File Loader
 
-Use ContextCrumb when an agent needs to load a large local text file into an LLM context window and exact wording is less important than preserving the useful information density.
+Use ContextCrumb when an agent needs to compress a large local text file before loading it into an LLM context window.
 
 ## Command
 
@@ -23,7 +23,6 @@ Good inputs:
 
 - Documentation
 - Notes
-- Meeting transcripts
 - Issue threads
 - Logs
 - Research context

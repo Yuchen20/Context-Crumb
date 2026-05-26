@@ -1,23 +1,22 @@
 ---
 name: contextcrumb
-description: Use when an agent needs to read, inspect, summarize, or load large local prose-heavy files cheaply before sending them into LLM context. Best for Markdown docs, notes, meeting transcripts, issue threads, logs with narrative text, research dumps, and other natural-language files where exact wording is less important than preserving useful context.
+description: Use when an agent needs to compress large prose-heavy files before sending them into LLM context. Best for Markdown docs, notes, issue threads, logs with narrative text, research dumps, and other natural-language files where useful information density matters more than every filler token.
 ---
 
 # ContextCrumb
 
 ## Purpose
 
-Use ContextCrumb as a cheap first pass before reading large local text files into an LLM context window. It compresses by deleting lower-value words and punctuation while keeping the remaining text in original order.
+Use ContextCrumb to compress large local text files before they enter an LLM context window. It deletes lower-value words and punctuation while keeping the remaining text in original order.
 
-ContextCrumb is for orientation and triage. Treat compressed output as shortened context, not authoritative source text.
+ContextCrumb is for context compression, token savings, and context-bloat control. It is not a preview step. For prose-heavy inputs, the compressed output is the context you work from.
 
 ## When To Use
 
-Use it before reading large natural-language files:
+Use it for large natural-language files:
 
 - Documentation and Markdown
 - Notes and research dumps
-- Meeting transcripts
 - Issue threads and long discussions
 - Logs with lots of prose
 - Long comments or narrative text
@@ -33,42 +32,48 @@ Do not rely on compressed output for exact syntax or exact wording:
 - Commands that may need to be copied exactly
 - Legal, compliance, policy, or contract text
 
-For these files, read the raw source. If a file is too large, use ContextCrumb only to find likely relevant sections, then open the raw file around those sections before editing, quoting, or copying anything.
+Only fall back to raw source when the task depends on exact syntax, exact wording, or exact formatting. If a natural-language file is simply large and prose-heavy, ContextCrumb output can be used directly as compressed context.
 
 ## Default Workflow
 
-If `contextcrumb` is already installed, use golden mode by default:
+First, check whether the `contextcrumb` CLI is available:
+
+```powershell
+contextcrumb --help
+```
+
+If the command exists, use golden mode by default:
 
 ```powershell
 contextcrumb load <file>
 ```
 
-If the CLI is not installed and this is a one-off read, run it from PyPI:
-
-```powershell
-uvx --from contextcrumb contextcrumb load <file>
-```
-
-If repeated local use is expected, install it once:
+If the command is missing, install the Python package once:
 
 ```powershell
 python -m pip install contextcrumb
 ```
 
-Then use:
+Then compress the file:
 
 ```powershell
 contextcrumb load <file>
 ```
 
-Golden mode chooses an adaptive cutoff for each file and is the preferred default because it is conservative. If the output is still too large, use a fixed keep ratio only after checking the tradeoff:
+If the environment has `uvx`, it can be used as an optional no-install path, but do not assume it is available:
+
+```powershell
+uvx --from contextcrumb contextcrumb load <file>
+```
+
+Golden mode chooses an adaptive cutoff for each file and is the preferred default because it is conservative. If the output is still too large, use a fixed keep ratio:
 
 ```powershell
 contextcrumb load <file> --target-keep-ratio 0.75
 contextcrumb load <file> --target-keep-ratio 0.5
 ```
 
-Avoid aggressive ratios for first-pass reading unless the user explicitly asks for heavy compression.
+Avoid aggressive ratios unless the user explicitly asks for heavy compression.
 
 ## Validation
 
@@ -78,7 +83,7 @@ Check compression savings without dumping the full output:
 contextcrumb inspect <file>
 ```
 
-Check what was removed before trusting a compressed result:
+Check what was removed when you want to understand or tune the compression:
 
 ```powershell
 contextcrumb diff <file>
@@ -95,7 +100,7 @@ Read the `text` field as compressed context. Use `stats.token_keep_ratio`, `stat
 ## Practical Rules
 
 - Use `contextcrumb load <file>` as the default.
-- Use `uvx --from contextcrumb contextcrumb load <file>` for no-install one-off use.
-- Use installed CLI for repeated use.
-- Use `inspect` and `diff` before trusting compressed text for important work.
+- If `contextcrumb` is missing, install it with `python -m pip install contextcrumb`.
+- Use `uvx --from contextcrumb contextcrumb load <file>` only when `uvx` is already available.
+- Use `inspect` and `diff` when you want to understand or tune compressed text.
 - Never edit code, copy commands, or quote exact wording based only on compressed output.
