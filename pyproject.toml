@@ -80,10 +80,12 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://huggingface.co/ymao20/contextcrumb-32m"
+Homepage = "https://context-crumb.vercel.app/docs/overview"
+Documentation = "https://context-crumb.vercel.app/docs/overview"
 Repository = "https://github.com/Yuchen20/Context-Crumb"
 "Bug Tracker" = "https://github.com/Yuchen20/Context-Crumb/issues"
 Changelog = "https://github.com/Yuchen20/Context-Crumb/blob/main/CHANGELOG.md"
+Model = "https://huggingface.co/ymao20/contextcrumb-32m"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
