@@ -10,6 +10,7 @@
 <p align="center">
   <!-- <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/badge/model-contextcrumb--32m-ffcc4d?style=flat" alt="Hugging Face model"></a> -->
   <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fhuggingface.co%2Fapi%2Fmodels%2Fymao20%2Fcontextcrumb-32m&query=%24.downloads&label=model%20downloads&color=ffcc4d&style=flat" alt="Hugging Face model downloads"></a>
+  <a href="https://pypi.org/project/contextcrumb/"><img src="https://img.shields.io/pypi/dm/contextcrumb?style=flat&label=pypi%20downloads&color=3775a9" alt="PyPI downloads"></a>
   <!-- <a href="https://huggingface.co/ymao20/contextcrumb-32m"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fhuggingface.co%2Fapi%2Fmodels%2Fymao20%2Fcontextcrumb-32m&query=%24.likes&label=model%20likes&color=ffcc4d&style=flat" alt="Hugging Face model likes"></a> -->
   <a href="https://github.com/Yuchen20/Context-Crumb/stargazers"><img src="https://img.shields.io/github/stars/Yuchen20/Context-Crumb?style=flat&color=yellow" alt="GitHub stars"></a>
   <a href="https://github.com/Yuchen20/Context-Crumb/commits/main"><img src="https://img.shields.io/github/last-commit/Yuchen20/Context-Crumb?style=flat" alt="Last commit"></a>
@@ -20,9 +21,9 @@
 
 <p align="center">
   <a href="#before-after">Before / After</a> -
+  <a href="#quickstart-30-second-setup">Quickstart</a> -
   <a href="https://huggingface.co/spaces/ymao20/contextcrumb-32m-demo">Playground</a> -
   <a href="#install">Install</a> -
-  <a href="#quick-start">Quick Start</a> -
   <a href="#cli">CLI</a> -
   <a href="#agent-mcp">Agent + MCP</a> -
   <a href="#model">Model</a>
@@ -30,11 +31,11 @@
 
 ---
 
-LLM context gets messy fast: meeting notes, logs, issue threads, docs, transcripts, and tool descriptions all pile up until the useful signal is buried under filler.
+LLM context gets messy fast: notes, logs, issue threads, docs, research dumps, and tool descriptions all pile up until the useful signal is buried under filler.
 
 **ContextCrumb** is a token-level compressor for LLM and agent workflows. It looks at text word by word and removes low-signal tokens while keeping the surviving text in the original order.
 
-That is the idea behind the name: the context is still there, but the loose crumbs are shaken off before they reach your model. Less bloat in the prompt. More room for the parts that matter.
+That is the idea behind the name: the context is still there, but the loose crumbs are shaken off before they reach your model. Less bloat in the prompt. More room for the parts that matter. Less wasted usage when Codex, Claude Code, or another agent processes long files repeatedly.
 
 <p align="center">
   <a href="https://huggingface.co/spaces/ymao20/contextcrumb-32m-demo">
@@ -46,33 +47,73 @@ That is the idea behind the name: the context is still there, but the loose crum
 
 <h2 id="before-after">Before / After</h2>
 
-ContextCrumb is not a summarizer. It does not rewrite your document into a new explanation. It keeps the source sequence and deletes expendable words.
+ContextCrumb is not a summarizer. It does not rewrite your document into a new explanation. It keeps the source sequence and deletes expendable words. This example uses `target_keep_ratio=0.72`.
 
 **Original**
 
 ```text
-ContextCrumb is designed for coding agents, MCP tools, and prompt pipelines that need to read a large local text file before sending it to an LLM. It prints only the compressed text by default, so an agent can capture stdout and use it as shortened context.
+Agents spend context on notes, logs, tickets, docs, and tool descriptions. Those files contain useful facts, but they also carry filler phrases and repeated wording. ContextCrumb compresses the text before it reaches the model. It keeps the original order, removes low-value tokens, and leaves a shorter version with the names, actions, constraints, and sequence still intact.
 ```
 
 **Compressed**
 
 ```text
-ContextCrumb designed coding agents, MCP tools, prompt pipelines need read large local text file before sending LLM. Prints compressed text default, agent capture stdout use shortened context.
+Agents spend context notes, logs, tickets, docs tool descriptions. Those files useful facts, carry filler phrases repeated wording. ContextCrumb compresses text before reaches model. keeps original order, removes low-value tokens, leaves shorter version names, actions, constraints sequence intact.
 ```
 
-Same order. Less padding. More room for the next file.
+Same order. Less padding. More room for the next file. On prose-heavy agent inputs, ContextCrumb often saves around **30-70% of the context** depending on how aggressively you compress and how much filler is in the source.
+
+| Metric | Original | Compressed | Saved |
+| --- | ---: | ---: | ---: |
+| Model tokens | 72 | 52 | 20 tokens |
+| Token budget | 100% | 72% | 28% fewer input tokens |
+
+**What that feels like over a month**
+
+Assume your agent reads 8k-token notes, logs, tickets, research dumps, or docs before answering. This helps with API token bills, but also with subscription-based coding agents where heavy context reads can burn through usage faster.
+
+| Workflow | Files read / day | Context saved / month | API cost avoided at $5 / 1M input tokens | Subscription usage feel |
+| --- | ---: | ---: | ---: | --- |
+| Solo agent helper | 20 | ~1.4M-3.4M tokens | ~$7-$17 | Fewer bulky reads in Codex or Claude Code |
+| Busy project workspace | 200 | ~14M-34M tokens | ~$72-$168 | More room for actual reasoning and edits |
+| Agent-heavy team or eval loop | 2,000 | ~144M-336M tokens | ~$720-$1,680 | Less usage spent processing padded files |
+
+The bigger win is usually not only the bill. It is keeping long-running agents from filling their context, turns, and subscription usage with words they did not need to carry in the first place.
+
+<h2 id="quickstart-30-second-setup">Quickstart (30-second setup)</h2>
+
+Teach your agent a small habit: compress the bloat before it enters context. ContextCrumb is meant to sit in the background as a skill, stepping in whenever a long note, doc, issue thread, research dump, or log would otherwise flood the context window and eat into your Codex or Claude Code usage.
+
+1. Add the skill.
+
+```bash
+npx skills add Yuchen20/Context-Crumb
+```
+
+2. Select the agent you want to install it on.
+
+The skill tells your agent when to compress text, how to preserve the useful sequence, and when exact raw text is required for things like code, configs, or direct quotes.
+
+3. Use ContextCrumb to compress long files instead of dropping the whole thing into context.
+
+```text
+Use ContextCrumb to compress this long project note before you work from it.
+```
+
+4. Voila: every long note, log, ticket, research dump, or doc enters context already trimmed, saving tokens and preserving more of your agent subscription for the work that matters.
 
 ## Why ContextCrumb?
 
 | Use case | What changes |
 | --- | --- |
-| Agent file loading | Read long notes, docs, transcripts, and logs before they hit the context window. |
+| Agent file loading | Compress long notes, docs, research dumps, and logs before they hit the context window. |
 | Prompt pipelines | Shrink natural-language inputs without hand-writing summarizers. |
 | MCP catalogs | Compress verbose tool/resource descriptions while preserving names and schemas. |
 | Local workflows | Run ONNX inference by default, with cached model files after first download. |
-| Trust-building | Use `diff` and `inspect` to see what was kept, deleted, and saved. |
+| Subscription-aware agents | Spend less Codex or Claude Code usage on repeatedly loading padded prose. |
+| Inspection and tuning | Use `diff` and `inspect` to see what was kept, deleted, and saved. |
 
-Best fit: docs, notes, transcripts, issue threads, logs, research context, and other natural-language files. For source code where exact syntax matters, prefer raw file loading or use a conservative keep ratio.
+Best fit: docs, notes, issue threads, logs, research context, and other natural-language files. For source code where exact syntax matters, prefer raw file loading or use a conservative keep ratio.
 
 <h2 id="install">Install</h2>
 
@@ -90,33 +131,6 @@ pip install "contextcrumb[torch]"
 
 ContextCrumb uses the ONNX backend by default, so normal users do not need PyTorch or Transformers installed. Model files are cached locally after the first download.
 
-<h2 id="quick-start">Quick Start</h2>
-
-```python
-from contextcrumb import ContextCompressor
-
-compressor = ContextCompressor()
-
-result = compressor.compress(
-    "ContextCrumb deletes low-value words while preserving useful context.",
-)
-
-print(result.text)
-print(result.stats)
-```
-
-Read and compress a file:
-
-```python
-from contextcrumb import ContextCompressor
-
-compressor = ContextCompressor()
-result = compressor.compress_file("notes.txt")
-
-print(result.text)
-print(result.stats["token_keep_ratio"])
-```
-
 <h2 id="cli">CLI</h2>
 
 The main agent-friendly command is `load`:
@@ -125,7 +139,7 @@ The main agent-friendly command is `load`:
 contextcrumb load notes.txt
 ```
 
-It prints only compressed text by default, which makes it easy for agents, hooks, shell scripts, and prompt pipelines to capture stdout and move on.
+It prints only compressed text by default, which makes it easy for agents, hooks, shell scripts, and prompt pipelines to capture stdout and move on. For subscription tools like Codex or Claude Code, that means fewer bulky file reads before the agent gets to the useful part.
 
 Useful commands:
 
@@ -174,7 +188,7 @@ compress_text
 compress_file
 ```
 
-ContextCrumb also ships `contextcrumb-shrink`, an MCP proxy that compresses verbose catalog descriptions before an agent sees them while forwarding tool names, schemas, calls, results, and resource contents unchanged.
+ContextCrumb also ships `contextcrumb-shrink`, an MCP proxy that compresses verbose catalog descriptions before an agent sees them while forwarding tool names, schemas, calls, results, and resource contents unchanged. This is useful when an agent client repeatedly spends context and subscription usage just looking at long tool descriptions.
 
 <h2 id="model">Model</h2>
 
