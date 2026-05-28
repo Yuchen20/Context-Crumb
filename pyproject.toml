@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Token-level context compression for LLM and agent workflows."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "Apache-2.0"
+license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
     "huggingface-hub>=0.27",
@@ -20,6 +20,7 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -80,8 +81,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://context-crumb.vercel.app/docs/overview"
-Documentation = "https://context-crumb.vercel.app/docs/overview"
+Homepage = "https://contextcrumb.vercel.app/docs/overview"
+Documentation = "https://contextcrumb.vercel.app/docs/overview"
 Repository = "https://github.com/Yuchen20/Context-Crumb"
 "Bug Tracker" = "https://github.com/Yuchen20/Context-Crumb/issues"
 Changelog = "https://github.com/Yuchen20/Context-Crumb/blob/main/CHANGELOG.md"
