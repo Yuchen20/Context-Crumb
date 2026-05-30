@@ -7,10 +7,21 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-30
+
 ### Added
 
+- Docusaurus documentation site with overview, getting started, CLI, API, service, batch, stats, examples, and MCP docs.
 - Agent-facing file safety policy for `load`, `inspect`, `diff`, `batch`, service file compression, and MCP file compression.
 - Optional `--receipt` output for compact compression savings summaries without changing plain compressed stdout.
+- Compression showcase for the documentation homepage.
+
+### Changed
+
+- Updated README positioning, quickstart guidance, examples, badges, and usage notes for agent workflows.
+- Changed project license metadata and classifier to MIT.
+- Updated PyPI project URLs to point to the documentation site, repository, changelog, issue tracker, and Hugging Face model.
+- Improved ContextCrumb agent skill guidance and fallback behavior.
 
 ## [0.1.0] - 2026-05-24
 
@@ -26,5 +37,6 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - MCP tools for `compress_text` and `compress_file`, including optional warm-service mode for lower repeated-call latency.
 - Test coverage for compression behavior, CLI workflows, service behavior, MCP adapter behavior, and research-helper utilities.
 
-[Unreleased]: https://github.com/Yuchen20/Context-Crumb/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Yuchen20/Context-Crumb/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Yuchen20/Context-Crumb/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Yuchen20/Context-Crumb/releases/tag/v0.1.0
