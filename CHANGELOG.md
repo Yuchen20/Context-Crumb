@@ -7,6 +7,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added
+
+- Agent-facing file safety policy for `load`, `inspect`, `diff`, `batch`, service file compression, and MCP file compression.
+- Optional `--receipt` output for compact compression savings summaries without changing plain compressed stdout.
+
 ## [0.1.0] - 2026-05-24
 
 ### Added

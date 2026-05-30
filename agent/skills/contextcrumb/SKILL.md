@@ -56,6 +56,23 @@ If either command works, read compressed context, not raw file contents:
 contextcrumb load <file>
 ```
 
+If ContextCrumb refuses a syntax-sensitive file, do not work around it by
+dumping the whole file into context unless exact source is truly needed. Use raw
+file reads only for the specific sections needed for edits, quotes, commands, or
+schema details. Use `--force` only for exploratory compression and treat the
+output as non-authoritative:
+
+```sh
+contextcrumb load <file> --force
+```
+
+When you need to tell the user how much was saved without polluting compressed
+stdout, use:
+
+```sh
+contextcrumb load <file> --receipt
+```
+
 ## No-Install Trial
 
 If ContextCrumb is not installed and the user provides non-sensitive pasted text, you may try the hosted Hugging Face Space as a quick demo:

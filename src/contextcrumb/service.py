@@ -14,6 +14,7 @@ from contextcrumb.compressor import (
     DEFAULT_THRESHOLD,
     ContextCompressor,
 )
+from contextcrumb.file_policy import classify_file_for_compression
 from contextcrumb.stats import log_result
 
 
@@ -173,6 +174,7 @@ def create_app(service: ContextCrumbService):
         golden_min_keep_ratio: float = DEFAULT_GOLDEN_MIN_KEEP_RATIO
         return_tokens: bool = False
         no_stats: bool = False
+        force: bool = False
 
     app = FastAPI(
         title="ContextCrumb Local Service",
@@ -210,6 +212,15 @@ def create_app(service: ContextCrumbService):
             raise HTTPException(status_code=404, detail=f"File not found: {request.path}")
         if not path.is_file():
             raise HTTPException(status_code=400, detail=f"Not a file: {request.path}")
+        policy = classify_file_for_compression(path)
+        if policy.force_required and not request.force:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Refusing to compress syntax-sensitive file type. "
+                    f"Reason: {policy.reason} Use force=true only for exploratory compression."
+                ),
+            )
         try:
             compressor = service.load()
             result = compressor.compress_file(
@@ -220,6 +231,13 @@ def create_app(service: ContextCrumbService):
                 golden=request.golden,
                 golden_min_keep_ratio=request.golden_min_keep_ratio,
                 return_tokens=request.return_tokens,
+            )
+            result.stats.update(
+                {
+                    "file_policy_status": policy.status,
+                    "file_policy_reason": policy.reason,
+                    "raw_read_required": policy.raw_read_required,
+                }
             )
             log_result(
                 result,

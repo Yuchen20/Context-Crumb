@@ -25,6 +25,7 @@ from contextcrumb.compressor import (
     ContextCompressor,
     TokenDecision,
 )
+from contextcrumb.file_policy import FilePolicyDecision, classify_file_for_compression
 from contextcrumb.stats import (
     aggregate_events,
     format_human_stats,
@@ -98,6 +99,16 @@ def add_compression_arguments(
     parser.add_argument("--json", action="store_true", help="Emit JSON instead of plain compressed text.")
     parser.add_argument("--no-stats", action="store_true", help="Do not write a local token-savings stats event.")
     parser.add_argument("--stats-source", default="cli", help="Stats source label for local ledger events.")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow compression of syntax-sensitive file types. Read raw source before edits, quotes, or commands.",
+    )
+    parser.add_argument(
+        "--receipt",
+        action="store_true",
+        help="Emit a compact compression receipt. Plain output writes the receipt to stderr.",
+    )
 
 
 def add_service_client_arguments(parser: argparse.ArgumentParser) -> None:
@@ -317,11 +328,33 @@ def make_compressor(args: argparse.Namespace) -> ContextCompressor:
     return compressor
 
 
+def format_compression_receipt(result: CompressionResult) -> str:
+    stats = result.stats
+    input_tokens = int(stats.get("input_tokens") or 0)
+    kept_tokens = int(stats.get("kept_tokens") or 0)
+    deleted_tokens = int(stats.get("deleted_tokens") or max(input_tokens - kept_tokens, 0))
+    saved_ratio = deleted_tokens / input_tokens if input_tokens else 0.0
+    keep_ratio = float(stats.get("token_keep_ratio") or (kept_tokens / input_tokens if input_tokens else 0.0))
+    mode = stats.get("mode") or "<unknown>"
+    source = stats.get("source_path") or "<text>"
+    raw_read = bool(stats.get("raw_read_required", False))
+    return (
+        f"ContextCrumb receipt: {source} tokens {input_tokens:,}->{kept_tokens:,}, "
+        f"saved {deleted_tokens:,} ({saved_ratio * 100:.1f}%), "
+        f"keep_ratio={keep_ratio:.3f}, mode={mode}, raw-read-before-exact-use={str(raw_read).lower()}"
+    )
+
+
 def print_result(args: argparse.Namespace, result) -> None:
     if args.json:
-        print(json.dumps(result.to_dict(include_tokens=args.return_tokens), ensure_ascii=False, indent=2))
+        payload = result.to_dict(include_tokens=args.return_tokens)
+        if getattr(args, "receipt", False):
+            payload["receipt"] = format_compression_receipt(result)
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
         print(result.text)
+        if getattr(args, "receipt", False):
+            print(format_compression_receipt(result), file=sys.stderr)
 
 
 def should_log_stats(args: argparse.Namespace) -> bool:
@@ -336,6 +369,33 @@ def log_cli_result(args: argparse.Namespace, result: CompressionResult, command:
         source_path=str(source_path) if source_path is not None else None,
         enabled=should_log_stats(args),
     )
+
+
+def annotate_file_policy(result: CompressionResult, decision: FilePolicyDecision) -> None:
+    result.stats.update(
+        {
+            "file_policy_status": decision.status,
+            "file_policy_reason": decision.reason,
+            "raw_read_required": decision.raw_read_required,
+        }
+    )
+
+
+def check_file_policy(path: Path, args: argparse.Namespace) -> FilePolicyDecision:
+    decision = classify_file_for_compression(path)
+    if decision.force_required and not bool(getattr(args, "force", False)):
+        raise SystemExit(
+            "Refusing to compress syntax-sensitive file type: "
+            f"{path}\nReason: {decision.reason}\n"
+            "Use --force only for exploratory compression. Read the raw source before editing, "
+            "quoting, copying commands, or relying on exact structure."
+        )
+    if decision.status == "unknown":
+        print(
+            f"ContextCrumb warning: unknown file type for {path}; verify compressed output before relying on it.",
+            file=sys.stderr,
+        )
+    return decision
 
 
 def result_from_payload(payload: dict) -> CompressionResult:
@@ -365,6 +425,7 @@ def service_payload(args: argparse.Namespace, *, text: str | None = None, path: 
         "golden_min_keep_ratio": args.golden_min_keep_ratio,
         "return_tokens": args.return_tokens if return_tokens is None else return_tokens,
         "no_stats": bool(getattr(args, "no_stats", False)),
+        "force": bool(getattr(args, "force", False)),
     }
     if text is not None:
         payload["text"] = text
@@ -504,10 +565,14 @@ def collect_batch_files(directory: Path, pattern: str, output_dir: Path) -> list
 
 
 def run_compress(args: argparse.Namespace) -> int:
+    input_policy = None
+    input_path = input_file_from_args(args)
+    if input_path is not None and args.text is None:
+        input_policy = check_file_policy(input_path, args)
     if args.use_service:
-        input_path = input_file_from_args(args)
         if input_path is not None and args.text is None:
             result = service_compress_file(input_path, args)
+            annotate_file_policy(result, input_policy)
             print_result(args, result)
             return 0
 
@@ -529,14 +594,19 @@ def run_compress(args: argparse.Namespace) -> int:
         golden_min_keep_ratio=args.golden_min_keep_ratio,
         return_tokens=args.return_tokens,
     )
+    if input_policy is not None and input_path is not None:
+        result.stats.setdefault("source_path", str(input_path))
+        annotate_file_policy(result, input_policy)
     log_cli_result(args, result, "compress", input_file_from_args(args))
     print_result(args, result)
     return 0
 
 
 def run_load(args: argparse.Namespace) -> int:
+    input_policy = check_file_policy(args.file, args)
     if args.use_service:
         result = service_compress_file(args.file, args)
+        annotate_file_policy(result, input_policy)
         print_result(args, result)
         return 0
     compressor = make_compressor(args)
@@ -555,11 +625,13 @@ def run_load(args: argparse.Namespace) -> int:
             raise SystemExit("Input file is empty.") from error
         raise
     log_cli_result(args, result, "load", args.file)
+    annotate_file_policy(result, input_policy)
     print_result(args, result)
     return 0
 
 
 def run_inspect(args: argparse.Namespace) -> int:
+    input_policy = check_file_policy(args.file, args)
     if args.use_service:
         result = service_compress_file(args.file, args)
     else:
@@ -571,13 +643,16 @@ def run_inspect(args: argparse.Namespace) -> int:
                 raise SystemExit("Input file is empty.") from error
             raise
     if args.json:
+        annotate_file_policy(result, input_policy)
         print(json.dumps(inspection_payload(result, include_tokens=args.return_tokens), ensure_ascii=False, indent=2))
     else:
+        annotate_file_policy(result, input_policy)
         print(format_inspection(result))
     return 0
 
 
 def run_diff(args: argparse.Namespace) -> int:
+    input_policy = check_file_policy(args.file, args)
     if args.use_service:
         result = service_compress_file(args.file, args, return_tokens=True)
     else:
@@ -588,6 +663,7 @@ def run_diff(args: argparse.Namespace) -> int:
             if str(error) == "Input file is empty.":
                 raise SystemExit("Input file is empty.") from error
             raise
+    annotate_file_policy(result, input_policy)
     if args.json:
         print(json.dumps(result.to_dict(include_tokens=True), ensure_ascii=False, indent=2))
     else:
@@ -599,6 +675,7 @@ def run_batch(args: argparse.Namespace) -> int:
     files = collect_batch_files(args.directory, args.glob, args.out)
     if not files:
         raise SystemExit(f"No files matched {args.glob!r} under {args.directory}.")
+    policies = {source_path: check_file_policy(source_path, args) for source_path in files}
     compressor = None if args.use_service else make_compressor(args)
     args.out.mkdir(parents=True, exist_ok=True)
     summaries = []
@@ -612,18 +689,20 @@ def run_batch(args: argparse.Namespace) -> int:
                 continue
             raise
         relative_path = source_path.relative_to(args.directory)
+        annotate_file_policy(result, policies[source_path])
         output_path = args.out / relative_path
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(result.text, encoding=args.encoding)
         if not args.use_service:
             log_cli_result(args, result, "batch", source_path)
-        summaries.append(
-            {
-                "source": str(source_path),
-                "output": str(output_path),
-                "stats": result.stats,
-            }
-        )
+        summary = {
+            "source": str(source_path),
+            "output": str(output_path),
+            "stats": result.stats,
+        }
+        if args.receipt:
+            summary["receipt"] = format_compression_receipt(result)
+        summaries.append(summary)
     if args.json:
         print(json.dumps({"files": summaries}, ensure_ascii=False, indent=2))
     else:
@@ -634,6 +713,8 @@ def run_batch(args: argparse.Namespace) -> int:
                 f"tokens {stats.get('input_tokens', 0)}->{stats.get('kept_tokens', 0)} "
                 f"({stats.get('token_keep_ratio', 0):.3f})"
             )
+            if args.receipt:
+                print(item["receipt"])
         print(f"Compressed {len(summaries)} file(s).")
     return 0
 

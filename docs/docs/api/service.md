@@ -100,7 +100,10 @@ curl -X POST http://127.0.0.1:8765/compress_file \
   -d '{"path":"docs/notes.md","target_keep_ratio":0.5}'
 ```
 
-The file path must be under an allowed root unless file reads are disabled.
+The file path must be under an allowed root unless file reads are disabled. The
+endpoint refuses syntax-sensitive file types by default. Use `"force": true` only
+for exploratory compression, and read the raw source before exact edits, quotes,
+commands, or schema details.
 
 ### `POST /shutdown`
 

@@ -24,8 +24,33 @@ Useful options:
 contextcrumb load notes.md --target-keep-ratio 0.5
 contextcrumb load notes.md --json
 contextcrumb load notes.md --json --return-tokens
+contextcrumb load notes.md --receipt
 contextcrumb load notes.md --no-stats
 ```
+
+`--receipt` keeps compressed text on stdout and writes a compact receipt to stderr:
+
+```text
+ContextCrumb receipt: notes.md tokens 12,400->4,100, saved 8,300 (66.9%), keep_ratio=0.331, mode=golden, raw-read-before-exact-use=false
+```
+
+With `--json --receipt`, the receipt is included as a top-level JSON field.
+
+## File Safety
+
+ContextCrumb is meant for prose-heavy context. `load`, `inspect`, `diff`, and `batch`
+refuse syntax-sensitive file types by default, including source code, diffs,
+JSON/YAML/TOML/XML, lockfiles, shell scripts, SQL, `.env` files, and common package
+manifests where exact structure matters.
+
+For exploratory compression only, override the guard:
+
+```bash
+contextcrumb load script.py --force
+```
+
+When `--force` is used, read the raw source before editing, quoting, copying
+commands, or relying on exact structure.
 
 ## Compress Inline Text Or Stdin
 

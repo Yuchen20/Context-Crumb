@@ -18,6 +18,7 @@ from contextcrumb.compressor import (
     DEFAULT_THRESHOLD,
     ContextCompressor,
 )
+from contextcrumb.file_policy import classify_file_for_compression
 from contextcrumb.mcp_types import CompressionOptions, McpServerConfig
 from contextcrumb.stats import log_result
 
@@ -103,6 +104,7 @@ class ContextCrumbMcpRuntime:
         golden: bool = True,
         golden_min_keep_ratio: float = DEFAULT_GOLDEN_MIN_KEEP_RATIO,
         return_tokens: bool = False,
+        force: bool = False,
     ) -> dict[str, Any]:
         """Read and compress a local text file on the MCP server machine."""
         source_path = Path(path)
@@ -110,6 +112,12 @@ class ContextCrumbMcpRuntime:
             raise FileNotFoundError(f"File not found: {path}")
         if not source_path.is_file():
             raise ValueError(f"Not a file: {path}")
+        policy = classify_file_for_compression(source_path)
+        if policy.force_required and not force:
+            raise ValueError(
+                "Refusing to compress syntax-sensitive file type. "
+                f"Reason: {policy.reason} Use force=true only for exploratory compression."
+            )
         options = CompressionOptions(
             threshold=threshold,
             target_keep_ratio=target_keep_ratio,
@@ -119,8 +127,17 @@ class ContextCrumbMcpRuntime:
         )
         if self.config.use_service:
             payload = self._service_payload(options, path=source_path, encoding=encoding)
+            payload["force"] = force
             response = self._service_request("/compress_file", payload)
-            return result_from_payload(response).to_dict(include_tokens=return_tokens)
+            result = result_from_payload(response)
+            result.stats.update(
+                {
+                    "file_policy_status": policy.status,
+                    "file_policy_reason": policy.reason,
+                    "raw_read_required": policy.raw_read_required,
+                }
+            )
+            return result.to_dict(include_tokens=return_tokens)
         compressor = self._get_compressor()
         result = compressor.compress_file(
             source_path,
@@ -130,6 +147,13 @@ class ContextCrumbMcpRuntime:
             golden=options.golden,
             golden_min_keep_ratio=options.golden_min_keep_ratio,
             return_tokens=options.return_tokens,
+        )
+        result.stats.update(
+            {
+                "file_policy_status": policy.status,
+                "file_policy_reason": policy.reason,
+                "raw_read_required": policy.raw_read_required,
+            }
         )
         log_result(result, source="mcp", command="mcp.compress_file", source_path=str(source_path))
         return result.to_dict(include_tokens=return_tokens)
@@ -214,6 +238,7 @@ def build_mcp_server(
         golden: bool = True,
         golden_min_keep_ratio: float = DEFAULT_GOLDEN_MIN_KEEP_RATIO,
         return_tokens: bool = False,
+        force: bool = False,
     ) -> dict[str, Any]:
         """Read and compress a local text file for LLM or agent context."""
         return runtime.compress_file(
@@ -224,6 +249,7 @@ def build_mcp_server(
             golden=golden,
             golden_min_keep_ratio=golden_min_keep_ratio,
             return_tokens=return_tokens,
+            force=force,
         )
 
     return mcp

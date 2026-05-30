@@ -68,6 +68,12 @@ Arguments:
 | `golden` | `true` | Use adaptive golden mode |
 | `golden_min_keep_ratio` | `0.333...` | Golden mode floor |
 | `return_tokens` | `false` | Include token decisions |
+| `force` | `false` | Allow syntax-sensitive file types for exploratory compression |
+
+`compress_file` refuses source code, diffs, structured configs, lockfiles,
+scripts, SQL, and `.env` files unless `force=true`. Forced output should not be
+used for exact edits, quotes, commands, or schema details without reading the raw
+source.
 
 ## Use A Warm Service
 

@@ -113,6 +113,32 @@ The compressed text is in `text`. Useful stats live under `stats`, including tok
 }
 ```
 
+Use `--receipt` when a shell script or agent should keep compressed text clean on
+stdout but still show what was saved:
+
+```bash
+contextcrumb load notes.txt --receipt
+```
+
+Plain output writes the receipt to stderr. JSON output includes it as a top-level
+`receipt` field.
+
+## File Safety
+
+ContextCrumb refuses syntax-sensitive file types by default, including source
+code, diffs, structured configs, lockfiles, scripts, SQL, and `.env` files. Those
+files should usually be read raw because exact tokens, structure, or commands may
+matter.
+
+Use `--force` only for exploratory compression:
+
+```bash
+contextcrumb load notes.py --force
+```
+
+If you force compression, read the raw source before editing, quoting, copying
+commands, or relying on exact formatting.
+
 ## Optional Extras
 
 Install extras only when you need them:

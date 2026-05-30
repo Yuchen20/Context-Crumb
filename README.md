@@ -145,10 +145,17 @@ Useful commands:
 
 ```bash
 contextcrumb load notes.txt --json
+contextcrumb load notes.txt --receipt
 contextcrumb diff notes.txt
 contextcrumb inspect notes.txt
 contextcrumb stats
 ```
+
+`--receipt` leaves compressed text on stdout and writes a compact savings receipt
+to stderr. ContextCrumb also refuses syntax-sensitive file types such as code,
+diffs, configs, lockfiles, scripts, SQL, and `.env` files unless you pass
+`--force`; forced output is only for exploratory reading, not exact edits or
+copy-paste commands.
 
 `diff` marks deleted tokens like this:
 

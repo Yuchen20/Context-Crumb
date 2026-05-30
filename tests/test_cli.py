@@ -4,7 +4,7 @@ import os
 import tempfile
 import unittest
 from urllib.error import HTTPError
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -185,6 +185,84 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["stats"]["source_path"], str(input_path))
         event = json.loads(Path(os.environ["CONTEXTCRUMB_STATS_FILE"]).read_text(encoding="utf-8"))
         self.assertEqual(event["source_path"], "context.txt")
+
+    def test_cli_refuses_syntax_sensitive_file_without_force(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = Path(temp_dir) / "script.py"
+            input_path.write_text("print('hello')", encoding="utf-8")
+
+            with self.assertRaises(SystemExit) as cm:
+                main(["load", str(input_path)])
+
+        self.assertIn("Refusing to compress syntax-sensitive file type", str(cm.exception))
+
+    def test_cli_force_allows_syntax_sensitive_file(self):
+        fake = FakeCompressor()
+        output = io.StringIO()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = Path(temp_dir) / "script.py"
+            input_path.write_text("print('hello')", encoding="utf-8")
+
+            with patch("contextcrumb.cli.ContextCompressor", return_value=fake):
+                with redirect_stdout(output):
+                    exit_code = main(["load", str(input_path), "--force", "--json"])
+
+        payload = json.loads(output.getvalue())
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(payload["stats"]["file_policy_status"], "unsafe")
+        self.assertTrue(payload["stats"]["raw_read_required"])
+
+    def test_cli_warns_on_unknown_file_type(self):
+        fake = FakeCompressor()
+        stderr = io.StringIO()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = Path(temp_dir) / "notes.weird"
+            input_path.write_text("long prose context", encoding="utf-8")
+
+            with patch("contextcrumb.cli.ContextCompressor", return_value=fake):
+                with redirect_stdout(io.StringIO()):
+                    with redirect_stderr(stderr):
+                        exit_code = main(["load", str(input_path)])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("unknown file type", stderr.getvalue())
+
+    def test_cli_receipt_keeps_plain_stdout_clean(self):
+        fake = FakeCompressor()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = Path(temp_dir) / "context.txt"
+            input_path.write_text("large file context", encoding="utf-8")
+
+            with patch("contextcrumb.cli.ContextCompressor", return_value=fake):
+                with redirect_stdout(stdout):
+                    with redirect_stderr(stderr):
+                        exit_code = main(["load", str(input_path), "--receipt"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stdout.getvalue().strip(), "compressed file context")
+        self.assertIn("ContextCrumb receipt:", stderr.getvalue())
+
+    def test_cli_json_receipt_is_top_level_field(self):
+        fake = FakeCompressor()
+        output = io.StringIO()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = Path(temp_dir) / "context.txt"
+            input_path.write_text("large file context", encoding="utf-8")
+
+            with patch("contextcrumb.cli.ContextCompressor", return_value=fake):
+                with redirect_stdout(output):
+                    exit_code = main(["load", str(input_path), "--json", "--receipt"])
+
+        payload = json.loads(output.getvalue())
+        self.assertEqual(exit_code, 0)
+        self.assertIn("receipt", payload)
+        self.assertIn("raw-read-before-exact-use=false", payload["receipt"])
 
     def test_cli_no_stats_disables_logging(self):
         fake = FakeCompressor()
