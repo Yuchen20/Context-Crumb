@@ -36,6 +36,14 @@ Use an explicit keep ratio:
 contextcrumb batch docs --glob "*.md" --out compressed-docs --target-keep-ratio 0.5
 ```
 
+Batch can also process supported source files with code-aware compression:
+
+```bash
+contextcrumb batch src --glob "*.py" --out compressed-src --content-mode code-comments
+```
+
+Executable source is preserved exactly; only comments/docstrings are compressed.
+
 Emit machine-readable summaries:
 
 ```bash
@@ -82,6 +90,7 @@ This avoids repeatedly loading the model.
 | Research dumps | `--target-keep-ratio 0.5` |
 | Meeting notes | `--target-keep-ratio 0.5` to `0.7` |
 | Logs with prose | Default threshold mode first, then inspect |
-| Code-heavy Markdown | `--target-keep-ratio 0.75` or raw file |
+| Supported source files | `--content-mode code-comments` |
+| Code-heavy Markdown | `--target-keep-ratio 0.75` or raw file for exact snippets |
 
 Skip empty files. The CLI does this during batch runs.

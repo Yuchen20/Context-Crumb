@@ -45,7 +45,14 @@ class FakeCompressor:
         text = Path(path).read_text(encoding=kwargs.get("encoding", "utf-8"))
         if not text.strip():
             raise ValueError("Input file is empty.")
-        result = self.compress(text, **{key: value for key, value in kwargs.items() if key != "encoding"})
+        result = self.compress(
+            text,
+            **{
+                key: value
+                for key, value in kwargs.items()
+                if key not in {"encoding", "content_mode", "config"}
+            },
+        )
         result.stats["source_path"] = str(path)
         return result
 

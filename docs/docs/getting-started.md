@@ -19,6 +19,7 @@ Start with the smallest path that matches what you are doing:
 | Goal | Command or API |
 | --- | --- |
 | Compress one file from a terminal | `contextcrumb load notes.md` |
+| Compress supported code comments/docstrings | `contextcrumb load script.py` |
 | Add compression before an LLM API call | `ContextCompressor().compress(text)` |
 | Compress a prompt, history, or subagent report | `compressor.compress(text)` |
 | Compress prose fields in tool output | Walk the structure and compress only text values |
@@ -125,10 +126,22 @@ Plain output writes the receipt to stderr. JSON output includes it as a top-leve
 
 ## File Safety
 
-ContextCrumb refuses syntax-sensitive file types by default, including source
-code, diffs, structured configs, lockfiles, scripts, SQL, and `.env` files. Those
-files should usually be read raw because exact tokens, structure, or commands may
-matter.
+ContextCrumb uses `compression.content_mode = "auto"` by default. Prose files are
+compressed normally. Supported code files use code-aware compression: executable
+source is preserved exactly, and only comments/docstrings are compressed.
+
+Initial code-aware languages are Python, JavaScript, TypeScript, JSX, TSX, Go,
+and Rust. Other syntax-sensitive file types are refused by default, including
+diffs, structured configs, lockfiles, SQL, and `.env` files. Those files should
+usually be read raw because exact tokens, structure, or commands may matter.
+
+Set or inspect persistent defaults:
+
+```bash
+contextcrumb config show
+contextcrumb config set compression.content_mode auto
+contextcrumb config set code.comment_target_keep_ratio 0.55
+```
 
 Use `--force` only for exploratory compression:
 

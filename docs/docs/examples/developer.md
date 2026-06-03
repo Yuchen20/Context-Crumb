@@ -45,6 +45,14 @@ def load_context(path: str, keep_ratio: float = 0.6) -> str:
 context = load_context("docs/architecture.md")
 ```
 
+For supported source files, `compress_file` defaults to `content_mode="auto"`:
+executable code is preserved exactly and only comments/docstrings are compressed.
+
+```python
+result = compressor.compress_file("src/app.py", content_mode="code-comments")
+print(result.stats["preserved_code_exact"])
+```
+
 ## Compress A Long User Prompt
 
 Use a conservative ratio for prompts. A user prompt may contain constraints, preferences, or acceptance criteria.
@@ -174,6 +182,13 @@ For code-heavy Markdown, split your pipeline:
 3. Reassemble the prompt with compressed prose and raw code.
 
 Use this approach for READMEs, design docs, and notebooks where commands or snippets must remain exact.
+
+For standalone supported source files, prefer code-aware file compression instead
+of splitting manually:
+
+```python
+result = compressor.compress_file("src/component.tsx", content_mode="code-comments")
+```
 
 ## Reuse The Warm Service From Python
 

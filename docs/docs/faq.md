@@ -14,7 +14,7 @@ Use it before sending large prose-heavy context to an LLM or agent. Good inputs 
 
 ## When should I avoid it?
 
-Avoid using compressed output as the only source for exact syntax or exact wording. Use raw files for code, configs, schemas, diffs, commands, legal text, and direct quotes.
+Avoid using compressed output as the only source for exact syntax or exact wording. Supported code files can be loaded in `auto` mode because executable source is preserved and only comments/docstrings are compressed, but use raw files for exact code edits, exact comments/docstrings, configs, schemas, diffs, commands, legal text, and direct quotes.
 
 ## What is the default threshold?
 
@@ -41,6 +41,19 @@ contextcrumb load notes.md --target-keep-ratio 0.75
 ```
 
 Or use raw loading when exact text matters.
+
+## Can I compress source code?
+
+Yes, for supported languages in the default `auto` mode. ContextCrumb preserves executable source exactly and compresses only comments/docstrings for Python, JavaScript, TypeScript, JSX, TSX, Go, and Rust.
+
+Use:
+
+```bash
+contextcrumb load script.py
+contextcrumb load component.tsx --content-mode code-comments
+```
+
+Unsupported code-like files, configs, diffs, SQL, lockfiles, and `.env` files are still refused unless you explicitly force exploratory compression.
 
 ## Does it need internet access?
 

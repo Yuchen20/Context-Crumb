@@ -124,6 +124,17 @@ compressor = ContextCompressor()
 result = compressor.compress_file("notes.md", encoding="utf-8")
 ```
 
+For supported source files, file compression defaults to `content_mode="auto"`:
+executable code is preserved exactly and only comments/docstrings are compressed.
+
+```python
+result = compressor.compress_file("src/app.py", content_mode="code-comments")
+print(result.stats["preserved_code_exact"])
+```
+
+Supported code-aware languages are Python, JavaScript, TypeScript, JSX, TSX, Go,
+and Rust.
+
 ## Explicit Keep Ratio
 
 ```python
@@ -227,7 +238,17 @@ Important keyword arguments:
 
 ### `compress_file(path, ...)`
 
-Reads a text file and compresses it. It accepts the same compression options plus `encoding`.
+Reads a text file and compresses it. It accepts the same compression options plus `encoding` and `content_mode`.
+
+`content_mode` values:
+
+| Value | Behavior |
+| --- | --- |
+| `auto` | Prose files use normal compression; supported code files use `code-comments` |
+| `prose` | Compress the whole file as natural language |
+| `code-comments` | Preserve executable code and compress only comments/docstrings |
+| `raw` | Return the file unchanged |
+| `refuse` | Reject file compression |
 
 ### `ContextCompressor`
 

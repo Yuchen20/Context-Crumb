@@ -44,17 +44,20 @@ contextcrumb inspect transcript.txt
 contextcrumb diff transcript.txt
 ```
 
-## Conservative Code-Adjacent Use
+## Code-Aware Source Loading
 
 ```text
-This file mixes prose and code. Use ContextCrumb only for the prose sections. Load code blocks, config snippets, and commands exactly as written.
+This source file has long comments. Use ContextCrumb in code-comments mode so executable code stays exact and only comments/docstrings are compressed.
 ```
 
-If the agent cannot split sections, use a conservative budget or raw loading:
+Typical commands:
 
 ```bash
-contextcrumb load design.md --target-keep-ratio 0.75
+contextcrumb load src/app.py
+contextcrumb load src/component.tsx --content-mode code-comments
 ```
+
+For config snippets, commands, generated diffs, SQL, and unsupported code, load the raw source when exact structure matters.
 
 ## Use MCP
 
@@ -71,10 +74,19 @@ Good MCP arguments:
 }
 ```
 
+For supported code files:
+
+```json
+{
+  "path": "src/app.py",
+  "content_mode": "code-comments"
+}
+```
+
 ## Compress A Long Prompt Before Planning
 
 ```text
-The request below is long and mostly prose. Compress it with ContextCrumb at a conservative keep ratio, then use the compressed version for planning. Keep exact commands, code, and acceptance criteria raw.
+The request below is long and mostly prose. Compress it with ContextCrumb at a conservative keep ratio, then use the compressed version for planning. Keep exact commands and acceptance criteria raw. Supported source files can be loaded separately with code-comments mode.
 ```
 
 Typical command for a saved prompt:
@@ -86,7 +98,7 @@ contextcrumb load prompt.txt --target-keep-ratio 0.75
 ## Compress A Subagent Report
 
 ```text
-Before handing the research report to the implementation agent, compress the narrative sections with ContextCrumb. Preserve code snippets, commands, URLs, and identifiers exactly.
+Before handing the research report to the implementation agent, compress the narrative sections with ContextCrumb. Preserve commands, URLs, and identifiers exactly. If the report references supported source files, load those files with code-comments mode.
 ```
 
 Typical command:

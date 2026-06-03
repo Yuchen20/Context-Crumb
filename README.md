@@ -92,7 +92,7 @@ npx skills add Yuchen20/Context-Crumb
 
 2. Select the agent you want to install it on.
 
-The skill tells your agent when to compress text, how to preserve the useful sequence, and when exact raw text is required for things like code, configs, or direct quotes.
+The skill tells your agent when to compress text, how to preserve the useful sequence, when supported code can be loaded with comment/docstring compression, and when exact raw text is required for configs, direct quotes, or exact edits.
 
 3. Use ContextCrumb to compress long files instead of dropping the whole thing into context.
 
@@ -113,7 +113,7 @@ Use ContextCrumb to compress this long project note before you work from it.
 | Subscription-aware agents | Spend less Codex or Claude Code usage on repeatedly loading padded prose. |
 | Inspection and tuning | Use `diff` and `inspect` to see what was kept, deleted, and saved. |
 
-Best fit: docs, notes, issue threads, logs, research context, and other natural-language files. For source code where exact syntax matters, prefer raw file loading or use a conservative keep ratio.
+Best fit: docs, notes, issue threads, logs, research context, other natural-language files, and supported source files where only comments/docstrings should be shortened. For exact code edits or exact comments, read the raw source.
 
 <h2 id="install">Install</h2>
 
@@ -146,16 +146,42 @@ Useful commands:
 ```bash
 contextcrumb load notes.txt --json
 contextcrumb load notes.txt --receipt
+contextcrumb config set compression.content_mode auto
 contextcrumb diff notes.txt
 contextcrumb inspect notes.txt
 contextcrumb stats
 ```
 
 `--receipt` leaves compressed text on stdout and writes a compact savings receipt
-to stderr. ContextCrumb also refuses syntax-sensitive file types such as code,
-diffs, configs, lockfiles, scripts, SQL, and `.env` files unless you pass
-`--force`; forced output is only for exploratory reading, not exact edits or
-copy-paste commands.
+to stderr. ContextCrumb uses `compression.content_mode = "auto"` by default:
+prose files are compressed normally, while supported code files use a
+code-aware path that preserves executable source exactly and compresses only
+comments/docstrings. Unsupported syntax-sensitive files such as diffs, configs,
+lockfiles, SQL, and `.env` files are still refused unless you pass `--force`;
+forced output is only for exploratory reading, not exact edits or copy-paste
+commands.
+
+Persistent defaults live in user config and can be changed from the CLI:
+
+```bash
+contextcrumb config show
+contextcrumb config set compression.content_mode code-comments
+contextcrumb config set code.comment_target_keep_ratio 0.55
+contextcrumb config unset compression.content_mode
+```
+
+Supported file modes:
+
+| Mode | Behavior |
+| --- | --- |
+| `auto` | Prose uses normal compression; supported code uses `code-comments`. |
+| `prose` | Treat the whole input as natural language. |
+| `code-comments` | Preserve executable code exactly and compress only comments/docstrings. |
+| `raw` | Return the file unchanged with stats. |
+| `refuse` | Reject file compression. |
+
+Initial code-aware languages: Python, JavaScript, TypeScript, JSX, TSX, Go, and
+Rust.
 
 `diff` marks deleted tokens like this:
 

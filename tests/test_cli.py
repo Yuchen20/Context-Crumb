@@ -49,6 +49,8 @@ class FakeCompressor:
         golden=True,
         golden_min_keep_ratio=1 / 3,
         return_tokens=False,
+        content_mode=None,
+        config=None,
     ):
         text = Path(path).read_text(encoding=encoding)
         self.calls.append((str(path), encoding, threshold, target_keep_ratio, golden, golden_min_keep_ratio, return_tokens))
@@ -118,9 +120,9 @@ class CliTests(unittest.TestCase):
 
         payload = json.loads(output.getvalue())
         self.assertEqual(exit_code, 0)
-        self.assertEqual(payload["text"], "compressed text")
+        self.assertEqual(payload["text"], "compressed file context")
         self.assertEqual(payload["original_text"], "file text")
-        self.assertEqual(fake.calls, [("file text", 0.5, None, True, 1 / 3, False)])
+        self.assertEqual(fake.calls, [(str(input_path), "utf-8", 0.5, None, True, 1 / 3, False)])
 
     def test_cli_accepts_positional_file_for_compress(self):
         fake = FakeCompressor()
@@ -135,8 +137,8 @@ class CliTests(unittest.TestCase):
                     exit_code = main(["compress", str(input_path)])
 
         self.assertEqual(exit_code, 0)
-        self.assertEqual(output.getvalue().strip(), "compressed text")
-        self.assertEqual(fake.calls, [("file text", 0.5, None, True, 1 / 3, False)])
+        self.assertEqual(output.getvalue().strip(), "compressed file context")
+        self.assertEqual(fake.calls, [(str(input_path), "utf-8", 0.5, None, True, 1 / 3, False)])
 
     def test_cli_can_disable_golden_mode(self):
         fake = FakeCompressor()
@@ -190,8 +192,8 @@ class CliTests(unittest.TestCase):
 
     def test_cli_refuses_syntax_sensitive_file_without_force(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            input_path = Path(temp_dir) / "script.py"
-            input_path.write_text("print('hello')", encoding="utf-8")
+            input_path = Path(temp_dir) / "query.sql"
+            input_path.write_text("select * from users", encoding="utf-8")
 
             with self.assertRaises(SystemExit) as cm:
                 main(["load", str(input_path)])

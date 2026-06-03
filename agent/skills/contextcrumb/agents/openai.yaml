@@ -1,4 +1,4 @@
 interface:
   display_name: "ContextCrumb"
-  short_description: "Compress large files for agent context"
-  default_prompt: "Use $contextcrumb to compress a large local document before loading it into context."
+  short_description: "Compress docs and supported code comments for agent context"
+  default_prompt: "Use $contextcrumb to compress a large local document or supported source file before loading it into context."

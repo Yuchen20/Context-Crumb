@@ -8,7 +8,7 @@ ContextCrumb turns text into token decisions. Each token receives a keep probabi
 
 ## Input Boundary
 
-ContextCrumb expects natural-language text. It can be used on many context surfaces, not only files:
+ContextCrumb expects natural-language text, or source files where only comments/docstrings should be compressed. It can be used on many context surfaces, not only files:
 
 - Prompt text
 - Older conversation turns
@@ -17,7 +17,7 @@ ContextCrumb expects natural-language text. It can be used on many context surfa
 - Natural-language tool output
 - MCP descriptions
 
-Keep exact data outside the compression boundary. For JSON, YAML, tables, code, identifiers, commands, and schemas, preserve the structure and compress only the prose values that are safe to shorten.
+Keep exact data outside the compression boundary. For JSON, YAML, tables, identifiers, commands, and schemas, preserve the structure and compress only the prose values that are safe to shorten. For supported source files, use file `content_mode="auto"` or `code-comments`; executable code stays exact while comments/docstrings are compressed.
 
 For example, compress `summary`, `body`, `description`, or `comment` fields, but leave `id`, `url`, `status`, `score`, `created_at`, and schema fields unchanged.
 
@@ -60,6 +60,27 @@ Use a custom threshold when you want direct model-score control:
 ```bash
 contextcrumb load notes.md --threshold 0.6
 ```
+
+### File Content Mode
+
+File compression also has `content_mode`, configured by `contextcrumb config` or
+overridden per command:
+
+```bash
+contextcrumb config set compression.content_mode auto
+contextcrumb load src/app.py --content-mode code-comments
+```
+
+Modes:
+
+- `auto`: prose files use normal compression; supported code files use `code-comments`
+- `prose`: compress the whole file as natural language
+- `code-comments`: preserve executable code and compress only comments/docstrings
+- `raw`: return the file unchanged
+- `refuse`: reject file compression
+
+Supported code-aware languages are Python, JavaScript, TypeScript, JSX, TSX, Go,
+and Rust.
 
 ## Sliding Windows
 

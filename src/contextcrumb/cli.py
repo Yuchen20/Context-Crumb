@@ -25,6 +25,17 @@ from contextcrumb.compressor import (
     ContextCompressor,
     TokenDecision,
 )
+from contextcrumb.code_compression import is_supported_code_file
+from contextcrumb.config import (
+    CONTENT_MODES,
+    default_user_config_path,
+    format_config,
+    load_config_file,
+    merge_config,
+    resolve_config,
+    set_config_value,
+    unset_config_value,
+)
 from contextcrumb.file_policy import FilePolicyDecision, classify_file_for_compression
 from contextcrumb.stats import (
     aggregate_events,
@@ -69,33 +80,39 @@ def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
 def add_compression_arguments(
     parser: argparse.ArgumentParser,
 ) -> None:
-    parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="Keep probability threshold.")
+    parser.add_argument("--threshold", type=float, default=None, help="Keep probability threshold.")
     parser.add_argument(
         "--target-keep-ratio",
         type=float,
         default=None,
-        help="Keep the top-scoring tokens near this ratio. Overrides golden mode.",
+        help="Keep the top-scoring tokens near this ratio. Overrides threshold mode.",
     )
     parser.add_argument(
         "--golden",
         dest="golden",
         action="store_true",
         default=True,
-        help="Use an adaptive cutoff from the largest word-token probability gap. This is the default.",
+        help="Deprecated compatibility flag. Compression uses --threshold unless --target-keep-ratio is set.",
     )
     parser.add_argument(
         "--no-golden",
         dest="golden",
         action="store_false",
-        help="Disable golden mode and use --threshold instead.",
+        help="Deprecated compatibility flag. Compression uses --threshold by default.",
     )
     parser.add_argument(
         "--golden-min-keep-ratio",
         type=float,
         default=DEFAULT_GOLDEN_MIN_KEEP_RATIO,
-        help="Minimum word-like token ratio golden mode may keep.",
+        help="Deprecated compatibility value; adaptive golden mode is no longer used by default.",
     )
     parser.add_argument("--return-tokens", action="store_true", help="Include token decisions in JSON output.")
+    parser.add_argument(
+        "--content-mode",
+        choices=CONTENT_MODES,
+        default=None,
+        help="File content mode. Defaults to config: auto, prose, code-comments, raw, or refuse.",
+    )
     parser.add_argument("--json", action="store_true", help="Emit JSON instead of plain compressed text.")
     parser.add_argument("--no-stats", action="store_true", help="Do not write a local token-savings stats event.")
     parser.add_argument("--stats-source", default="cli", help="Stats source label for local ledger events.")
@@ -159,8 +176,9 @@ def build_parser() -> argparse.ArgumentParser:
             "     script is not on PATH.\n"
             "\n"
             "Safety:\n"
-            "  Do not rely on compressed output for exact code, diffs, configs, commands, legal\n"
-            "  text, policy text, quotes, or formatting. Use raw source when exactness matters.\n"
+            "  Supported code files use code-comments mode in auto: executable source is preserved\n"
+            "  exactly while comments/docstrings are compressed. Do not rely on compressed output\n"
+            "  for exact edits, diffs, configs, commands, legal text, policy text, quotes, or formatting.\n"
             "  If `--json` hits terminal Unicode errors, set PYTHONIOENCODING=utf-8.\n"
             "\n"
             "Examples:\n"
@@ -232,12 +250,12 @@ def build_parser() -> argparse.ArgumentParser:
               - It keeps the original token order while deleting low-value wording.
               - It reduces prompt/context size before the file is passed to an LLM.
               - It prints only compressed text by default, which is easy for tools to capture.
-              - It uses capped golden mode by default, so callers do not need to tune a ratio.
+              - It keeps tokens with KEEP probability at or above --threshold, default 0.5.
               - Use --json when the caller needs compression stats or token decisions.
 
             Best fit:
               Natural-language files such as docs, notes, transcripts, issue threads, logs, and research context.
-              For source code where exact syntax matters, prefer raw file loading or use a conservative keep ratio.
+              Supported source files preserve executable code exactly in auto mode while comments/docstrings are compressed.
             """
         ),
     )
@@ -257,6 +275,19 @@ def build_parser() -> argparse.ArgumentParser:
     stats_reset = stats_subparsers.add_parser("reset", help="Move the stats history to a timestamped backup.")
     stats_reset.set_defaults(func=run_stats_reset)
     stats_parser.set_defaults(func=run_stats)
+
+    config_parser = subparsers.add_parser("config", help="Show or edit user-global ContextCrumb config.")
+    config_subparsers = config_parser.add_subparsers(dest="config_command", required=True)
+    config_show = config_subparsers.add_parser("show", help="Show the resolved ContextCrumb config.")
+    config_show.add_argument("--user", action="store_true", help="Show only the user-global config file.")
+    config_show.set_defaults(func=run_config_show)
+    config_set = config_subparsers.add_parser("set", help="Set a user-global config key.")
+    config_set.add_argument("key", help="Dotted key, for example compression.content_mode.")
+    config_set.add_argument("value", help="Value to write.")
+    config_set.set_defaults(func=run_config_set)
+    config_unset = config_subparsers.add_parser("unset", help="Reset a user-global config key to its default.")
+    config_unset.add_argument("key", help="Dotted key, for example compression.content_mode.")
+    config_unset.set_defaults(func=run_config_unset)
 
     service_parser = subparsers.add_parser(
         "service",
@@ -328,6 +359,15 @@ def make_compressor(args: argparse.Namespace) -> ContextCompressor:
     return compressor
 
 
+def prepare_compression_args(args: argparse.Namespace, path: Path | None = None):
+    config = resolve_config(start=path)
+    args.threshold = config.compression.threshold if args.threshold is None else args.threshold
+    if args.target_keep_ratio is None:
+        args.target_keep_ratio = config.compression.target_keep_ratio
+    args.content_mode = args.content_mode or config.compression.content_mode
+    return config
+
+
 def format_compression_receipt(result: CompressionResult) -> str:
     stats = result.stats
     input_tokens = int(stats.get("input_tokens") or 0)
@@ -381,9 +421,14 @@ def annotate_file_policy(result: CompressionResult, decision: FilePolicyDecision
     )
 
 
-def check_file_policy(path: Path, args: argparse.Namespace) -> FilePolicyDecision:
+def check_file_policy(path: Path, args: argparse.Namespace, config=None) -> FilePolicyDecision:
     decision = classify_file_for_compression(path)
+    config = config or resolve_config(start=path)
+    content_mode = getattr(args, "content_mode", None) or config.compression.content_mode
+    code_mode_allowed = content_mode in {"auto", "code-comments"} and is_supported_code_file(path, config.code)
     if decision.force_required and not bool(getattr(args, "force", False)):
+        if code_mode_allowed:
+            return decision
         raise SystemExit(
             "Refusing to compress syntax-sensitive file type: "
             f"{path}\nReason: {decision.reason}\n"
@@ -426,6 +471,7 @@ def service_payload(args: argparse.Namespace, *, text: str | None = None, path: 
         "return_tokens": args.return_tokens if return_tokens is None else return_tokens,
         "no_stats": bool(getattr(args, "no_stats", False)),
         "force": bool(getattr(args, "force", False)),
+        "content_mode": getattr(args, "content_mode", None),
     }
     if text is not None:
         payload["text"] = text
@@ -499,6 +545,7 @@ def compress_file_with_args(
         golden=args.golden,
         golden_min_keep_ratio=args.golden_min_keep_ratio,
         return_tokens=args.return_tokens if return_tokens is None else return_tokens,
+        content_mode=args.content_mode,
     )
 
 
@@ -513,14 +560,8 @@ def format_inspection(result: CompressionResult) -> str:
         f"Words: {stats.get('original_words', 0)} -> {stats.get('shortened_words', 0)} kept ({stats.get('word_keep', 0):.3f})",
         f"Tokens: {stats.get('input_tokens', 0)} -> {stats.get('kept_tokens', 0)} kept ({stats.get('token_keep_ratio', 0):.3f})",
     ]
-    if stats.get("mode") == "golden":
-        lines.extend(
-            [
-                f"Golden cutoff: {stats.get('golden_cutoff', 0):.4f}",
-                f"Golden gap: {stats.get('golden_gap', 0):.4f}",
-                f"Golden capped: {stats.get('golden_capped', False)}",
-            ]
-        )
+    if stats.get("mode") == "threshold":
+        lines.append(f"Threshold: {stats.get('threshold', 0):.4f}")
     if stats.get("target_keep_ratio") is not None:
         lines.append(f"Target keep ratio: {stats['target_keep_ratio']}")
     return "\n".join(lines)
@@ -567,8 +608,9 @@ def collect_batch_files(directory: Path, pattern: str, output_dir: Path) -> list
 def run_compress(args: argparse.Namespace) -> int:
     input_policy = None
     input_path = input_file_from_args(args)
+    config = prepare_compression_args(args, input_path)
     if input_path is not None and args.text is None:
-        input_policy = check_file_policy(input_path, args)
+        input_policy = check_file_policy(input_path, args, config)
     if args.use_service:
         if input_path is not None and args.text is None:
             result = service_compress_file(input_path, args)
@@ -586,14 +628,22 @@ def run_compress(args: argparse.Namespace) -> int:
         return 0
 
     compressor = make_compressor(args)
-    result = compressor.compress(
-        text,
-        threshold=args.threshold,
-        target_keep_ratio=args.target_keep_ratio,
-        golden=args.golden,
-        golden_min_keep_ratio=args.golden_min_keep_ratio,
-        return_tokens=args.return_tokens,
-    )
+    if input_path is not None and args.text is None:
+        try:
+            result = compress_file_with_args(compressor, input_path, args)
+        except ValueError as error:
+            if str(error) == "Input file is empty.":
+                raise SystemExit("Input file is empty.") from error
+            raise
+    else:
+        result = compressor.compress(
+            text,
+            threshold=args.threshold,
+            target_keep_ratio=args.target_keep_ratio,
+            golden=args.golden,
+            golden_min_keep_ratio=args.golden_min_keep_ratio,
+            return_tokens=args.return_tokens,
+        )
     if input_policy is not None and input_path is not None:
         result.stats.setdefault("source_path", str(input_path))
         annotate_file_policy(result, input_policy)
@@ -603,7 +653,8 @@ def run_compress(args: argparse.Namespace) -> int:
 
 
 def run_load(args: argparse.Namespace) -> int:
-    input_policy = check_file_policy(args.file, args)
+    config = prepare_compression_args(args, args.file)
+    input_policy = check_file_policy(args.file, args, config)
     if args.use_service:
         result = service_compress_file(args.file, args)
         annotate_file_policy(result, input_policy)
@@ -619,6 +670,7 @@ def run_load(args: argparse.Namespace) -> int:
             golden=args.golden,
             golden_min_keep_ratio=args.golden_min_keep_ratio,
             return_tokens=args.return_tokens,
+            content_mode=args.content_mode,
         )
     except ValueError as error:
         if str(error) == "Input file is empty.":
@@ -631,7 +683,8 @@ def run_load(args: argparse.Namespace) -> int:
 
 
 def run_inspect(args: argparse.Namespace) -> int:
-    input_policy = check_file_policy(args.file, args)
+    config = prepare_compression_args(args, args.file)
+    input_policy = check_file_policy(args.file, args, config)
     if args.use_service:
         result = service_compress_file(args.file, args)
     else:
@@ -652,7 +705,8 @@ def run_inspect(args: argparse.Namespace) -> int:
 
 
 def run_diff(args: argparse.Namespace) -> int:
-    input_policy = check_file_policy(args.file, args)
+    config = prepare_compression_args(args, args.file)
+    input_policy = check_file_policy(args.file, args, config)
     if args.use_service:
         result = service_compress_file(args.file, args, return_tokens=True)
     else:
@@ -675,7 +729,8 @@ def run_batch(args: argparse.Namespace) -> int:
     files = collect_batch_files(args.directory, args.glob, args.out)
     if not files:
         raise SystemExit(f"No files matched {args.glob!r} under {args.directory}.")
-    policies = {source_path: check_file_policy(source_path, args) for source_path in files}
+    config = prepare_compression_args(args, args.directory)
+    policies = {source_path: check_file_policy(source_path, args, config) for source_path in files}
     compressor = None if args.use_service else make_compressor(args)
     args.out.mkdir(parents=True, exist_ok=True)
     summaries = []
@@ -740,6 +795,38 @@ def run_stats_reset(args: argparse.Namespace) -> int:
         print("No ContextCrumb stats history found.")
     else:
         print(f"Moved ContextCrumb stats history to {backup_path}.")
+    return 0
+
+
+def run_config_show(args: argparse.Namespace) -> int:
+    config = resolve_config(include_project=not args.user)
+    print(format_config(config), end="")
+    return 0
+
+
+def run_config_set(args: argparse.Namespace) -> int:
+    path = default_user_config_path()
+    config = merge_config(resolve_config(include_project=False), load_config_file(path))
+    try:
+        updated = set_config_value(config, args.key, args.value)
+    except (KeyError, ValueError) as error:
+        raise SystemExit(str(error)) from error
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(format_config(updated), encoding="utf-8")
+    print(f"Wrote {args.key} to {path}")
+    return 0
+
+
+def run_config_unset(args: argparse.Namespace) -> int:
+    path = default_user_config_path()
+    config = merge_config(resolve_config(include_project=False), load_config_file(path))
+    try:
+        updated = unset_config_value(config, args.key)
+    except (KeyError, ValueError) as error:
+        raise SystemExit(str(error)) from error
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(format_config(updated), encoding="utf-8")
+    print(f"Reset {args.key} in {path}")
     return 0
 
 

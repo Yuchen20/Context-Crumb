@@ -71,7 +71,10 @@ def parse_config_text(text: str) -> dict[str, Any]:
     except ImportError:  # pragma: no cover - Python 3.10 fallback
         tomllib = None
     if tomllib is not None:
-        return dict(tomllib.loads(text))
+        try:
+            return dict(tomllib.loads(text))
+        except tomllib.TOMLDecodeError:
+            return _parse_minimal_toml(text)
     return _parse_minimal_toml(text)
 
 

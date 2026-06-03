@@ -38,10 +38,14 @@ With `--json --receipt`, the receipt is included as a top-level JSON field.
 
 ## File Safety
 
-ContextCrumb is meant for prose-heavy context. `load`, `inspect`, `diff`, and `batch`
-refuse syntax-sensitive file types by default, including source code, diffs,
-JSON/YAML/TOML/XML, lockfiles, shell scripts, SQL, `.env` files, and common package
-manifests where exact structure matters.
+ContextCrumb uses `compression.content_mode = "auto"` by default. Prose files
+are compressed normally. Supported code files use code-aware compression: source
+code is preserved exactly, and only comments/docstrings are compressed.
+
+Initial code-aware languages are Python, JavaScript, TypeScript, JSX, TSX, Go,
+and Rust. Other syntax-sensitive file types are refused by default, including
+diffs, JSON/YAML/TOML/XML, lockfiles, shell scripts, SQL, `.env` files, and
+common package manifests where exact structure matters.
 
 For exploratory compression only, override the guard:
 
@@ -51,6 +55,23 @@ contextcrumb load script.py --force
 
 When `--force` is used, read the raw source before editing, quoting, copying
 commands, or relying on exact structure.
+
+Override file handling for one command:
+
+```bash
+contextcrumb load script.py --content-mode code-comments
+contextcrumb load notes.md --content-mode prose
+contextcrumb load config.json --content-mode raw
+```
+
+Set persistent defaults:
+
+```bash
+contextcrumb config show
+contextcrumb config set compression.content_mode code-comments
+contextcrumb config set code.comment_target_keep_ratio 0.55
+contextcrumb config unset compression.content_mode
+```
 
 ## Compress Inline Text Or Stdin
 

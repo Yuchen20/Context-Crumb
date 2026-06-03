@@ -69,11 +69,17 @@ Arguments:
 | `golden_min_keep_ratio` | `0.333...` | Deprecated compatibility value |
 | `return_tokens` | `false` | Include token decisions |
 | `force` | `false` | Allow syntax-sensitive file types for exploratory compression |
+| `content_mode` | config default | `auto`, `prose`, `code-comments`, `raw`, or `refuse` |
 
-`compress_file` refuses source code, diffs, structured configs, lockfiles,
-scripts, SQL, and `.env` files unless `force=true`. Forced output should not be
-used for exact edits, quotes, commands, or schema details without reading the raw
-source.
+`compress_file` uses configured `content_mode` by default. In `auto` mode,
+supported source files preserve executable code exactly and compress only
+comments/docstrings. Supported code-aware languages are Python, JavaScript,
+TypeScript, JSX, TSX, Go, and Rust.
+
+Unsupported syntax-sensitive file types such as diffs, structured configs,
+lockfiles, SQL, and `.env` files are refused unless `force=true`. Forced output
+should not be used for exact edits, quotes, commands, or schema details without
+reading the raw source.
 
 ## Use A Warm Service
 

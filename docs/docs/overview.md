@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Overview
 
-ContextCrumb compresses prose-heavy context before it reaches an LLM or agent. It scores the input token by token, deletes low-value tokens, and keeps the surviving text in the original order.
+ContextCrumb compresses prose-heavy context before it reaches an LLM or agent. It scores the input token by token, deletes low-value tokens, and keeps the surviving text in the original order. For supported source files, it can preserve executable code exactly while compressing only comments/docstrings.
 
 It is useful when natural-language context is too verbose for a model context window: docs, notes, issue threads, transcripts, logs, research dumps, prompts, conversation history, subagent output, or natural-language tool results.
 
@@ -37,6 +37,7 @@ That makes it a good fit for agent workflows where the model still needs names, 
 - Natural-language tool results
 - Tool, resource, and prompt descriptions in MCP catalogs
 - Agent skills that load large local files
+- Supported source files when comment/docstring compression is useful
 
 ## Context Surfaces
 
@@ -55,14 +56,14 @@ ContextCrumb can sit anywhere a system turns natural language into model input:
 
 Do not use compressed output as the only source of truth when exact text matters:
 
-- Source code
+- Unsupported source code, or source code when exact comments/docstrings matter
 - Config files
 - Diffs and patches
 - JSON, YAML, TOML, XML, or schemas
 - Shell commands people may copy exactly
 - Legal, compliance, policy, or contract text
 
-For code and structured data, load the raw file. For mixed prose/code documents, compress only the prose section or use a conservative keep ratio.
+For supported Python, JavaScript, TypeScript, JSX, TSX, Go, and Rust files, `auto` mode preserves executable source exactly and compresses only comments/docstrings. For structured data and unsupported code, load the raw file or use `raw`/`refuse` file modes.
 
 For structured tool output, preserve the structure and compress only natural-language values. Do not compress raw JSON as one string if keys, ids, numbers, or schema shape matter.
 

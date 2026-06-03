@@ -17,15 +17,18 @@ This section is for people using coding assistants, research agents, MCP clients
 
 ## Recommended Agent Rule
 
-Use ContextCrumb for large natural-language files:
+Use ContextCrumb for large natural-language files and supported code files:
 
 ```bash
 contextcrumb load path/to/file.md
+contextcrumb load path/to/file.py
 ```
 
-Do not use it as the only source for exact syntax:
+For supported Python, JavaScript, TypeScript, JSX, TSX, Go, and Rust files, default `auto` mode preserves executable source exactly and compresses only comments/docstrings.
 
-- Source code
+Do not use compressed output as the only source for exact syntax:
+
+- Unsupported source code, or exact source edits
 - Config files
 - Diffs
 - Schemas
@@ -51,7 +54,7 @@ Before reading the full transcript into context, run contextcrumb load on it and
 For safer code-adjacent use:
 
 ```text
-Use ContextCrumb only for the prose sections. Load code blocks and commands raw.
+Use ContextCrumb for supported source files in code-comments mode. Load commands, configs, and unsupported code raw.
 ```
 
 ## Agent Integration Choices

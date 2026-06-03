@@ -18,6 +18,8 @@ from contextcrumb.compressor import (
     DEFAULT_THRESHOLD,
     ContextCompressor,
 )
+from contextcrumb.code_compression import is_supported_code_file
+from contextcrumb.config import CONTENT_MODES, resolve_config
 from contextcrumb.file_policy import classify_file_for_compression
 from contextcrumb.mcp_types import CompressionOptions, McpServerConfig
 from contextcrumb.stats import log_result
@@ -62,7 +64,7 @@ class ContextCrumbMcpRuntime:
         self,
         text: str,
         *,
-        threshold: float = DEFAULT_THRESHOLD,
+        threshold: float | None = None,
         target_keep_ratio: float | None = None,
         golden: bool = True,
         golden_min_keep_ratio: float = DEFAULT_GOLDEN_MIN_KEEP_RATIO,
@@ -83,10 +85,15 @@ class ContextCrumbMcpRuntime:
             response = self._service_request("/compress", payload)
             return result_from_payload(response).to_dict(include_tokens=return_tokens)
         compressor = self._get_compressor()
+        config = resolve_config()
         result = compressor.compress(
             text,
-            threshold=options.threshold,
-            target_keep_ratio=options.target_keep_ratio,
+            threshold=config.compression.threshold if options.threshold is None else options.threshold,
+            target_keep_ratio=(
+                config.compression.target_keep_ratio
+                if options.target_keep_ratio is None
+                else options.target_keep_ratio
+            ),
             golden=options.golden,
             golden_min_keep_ratio=options.golden_min_keep_ratio,
             return_tokens=options.return_tokens,
@@ -99,12 +106,13 @@ class ContextCrumbMcpRuntime:
         path: str,
         *,
         encoding: str = "utf-8",
-        threshold: float = DEFAULT_THRESHOLD,
+        threshold: float | None = None,
         target_keep_ratio: float | None = None,
         golden: bool = True,
         golden_min_keep_ratio: float = DEFAULT_GOLDEN_MIN_KEEP_RATIO,
         return_tokens: bool = False,
         force: bool = False,
+        content_mode: str | None = None,
     ) -> dict[str, Any]:
         """Read and compress a local text file on the MCP server machine."""
         source_path = Path(path)
@@ -112,8 +120,13 @@ class ContextCrumbMcpRuntime:
             raise FileNotFoundError(f"File not found: {path}")
         if not source_path.is_file():
             raise ValueError(f"Not a file: {path}")
+        config = resolve_config(start=source_path)
+        resolved_content_mode = content_mode or config.compression.content_mode
+        if resolved_content_mode not in CONTENT_MODES:
+            raise ValueError(f"content_mode must be one of: {', '.join(CONTENT_MODES)}")
         policy = classify_file_for_compression(source_path)
-        if policy.force_required and not force:
+        code_mode_allowed = resolved_content_mode in {"auto", "code-comments"} and is_supported_code_file(source_path, config.code)
+        if policy.force_required and not force and not code_mode_allowed:
             raise ValueError(
                 "Refusing to compress syntax-sensitive file type. "
                 f"Reason: {policy.reason} Use force=true only for exploratory compression."
@@ -124,10 +137,12 @@ class ContextCrumbMcpRuntime:
             golden=golden,
             golden_min_keep_ratio=golden_min_keep_ratio,
             return_tokens=return_tokens,
+            content_mode=resolved_content_mode,
         )
         if self.config.use_service:
             payload = self._service_payload(options, path=source_path, encoding=encoding)
             payload["force"] = force
+            payload["content_mode"] = resolved_content_mode
             response = self._service_request("/compress_file", payload)
             result = result_from_payload(response)
             result.stats.update(
@@ -142,11 +157,17 @@ class ContextCrumbMcpRuntime:
         result = compressor.compress_file(
             source_path,
             encoding=encoding,
-            threshold=options.threshold,
-            target_keep_ratio=options.target_keep_ratio,
+            threshold=config.compression.threshold if options.threshold is None else options.threshold,
+            target_keep_ratio=(
+                config.compression.target_keep_ratio
+                if options.target_keep_ratio is None
+                else options.target_keep_ratio
+            ),
             golden=options.golden,
             golden_min_keep_ratio=options.golden_min_keep_ratio,
             return_tokens=options.return_tokens,
+            content_mode=resolved_content_mode,
+            config=config,
         )
         result.stats.update(
             {
@@ -172,6 +193,7 @@ class ContextCrumbMcpRuntime:
             "golden": options.golden,
             "golden_min_keep_ratio": options.golden_min_keep_ratio,
             "return_tokens": options.return_tokens,
+            "content_mode": options.content_mode,
         }
         if text is not None:
             payload["text"] = text
@@ -213,7 +235,7 @@ def build_mcp_server(
     @mcp.tool()
     def compress_text(
         text: str,
-        threshold: float = DEFAULT_THRESHOLD,
+        threshold: float | None = None,
         target_keep_ratio: float | None = None,
         golden: bool = True,
         golden_min_keep_ratio: float = DEFAULT_GOLDEN_MIN_KEEP_RATIO,
@@ -233,12 +255,13 @@ def build_mcp_server(
     def compress_file(
         path: str,
         encoding: str = "utf-8",
-        threshold: float = DEFAULT_THRESHOLD,
+        threshold: float | None = None,
         target_keep_ratio: float | None = None,
         golden: bool = True,
         golden_min_keep_ratio: float = DEFAULT_GOLDEN_MIN_KEEP_RATIO,
         return_tokens: bool = False,
         force: bool = False,
+        content_mode: str | None = None,
     ) -> dict[str, Any]:
         """Read and compress a local text file for LLM or agent context."""
         return runtime.compress_file(
@@ -250,6 +273,7 @@ def build_mcp_server(
             golden_min_keep_ratio=golden_min_keep_ratio,
             return_tokens=return_tokens,
             force=force,
+            content_mode=content_mode,
         )
 
     return mcp

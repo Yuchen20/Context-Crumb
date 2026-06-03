@@ -101,9 +101,18 @@ curl -X POST http://127.0.0.1:8765/compress_file \
 ```
 
 The file path must be under an allowed root unless file reads are disabled. The
-endpoint refuses syntax-sensitive file types by default. Use `"force": true` only
-for exploratory compression, and read the raw source before exact edits, quotes,
-commands, or schema details.
+endpoint uses configured `content_mode` by default. In `auto` mode, supported
+source files preserve executable code exactly and compress only comments/docstrings:
+
+```bash
+curl -X POST http://127.0.0.1:8765/compress_file \
+  -H "Content-Type: application/json" \
+  -d '{"path":"src/app.py","content_mode":"code-comments"}'
+```
+
+Unsupported syntax-sensitive file types are refused by default. Use
+`"force": true` only for exploratory compression, and read the raw source before
+exact edits, quotes, commands, or schema details.
 
 ### `POST /shutdown`
 

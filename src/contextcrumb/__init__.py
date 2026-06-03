@@ -9,6 +9,7 @@ from contextcrumb.compressor import (
     compress,
     compress_file,
 )
+from contextcrumb.config import ContextCrumbConfig
 
 __all__ = [
     "DEFAULT_MODEL_ID",
@@ -16,6 +17,7 @@ __all__ = [
     "CompressionResult",
     "ContextCompressor",
     "TokenDecision",
+    "ContextCrumbConfig",
     "compress",
     "compress_file",
 ]

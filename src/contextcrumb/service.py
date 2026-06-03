@@ -14,6 +14,8 @@ from contextcrumb.compressor import (
     DEFAULT_THRESHOLD,
     ContextCompressor,
 )
+from contextcrumb.code_compression import is_supported_code_file
+from contextcrumb.config import CONTENT_MODES, resolve_config
 from contextcrumb.file_policy import classify_file_for_compression
 from contextcrumb.stats import log_result
 
@@ -156,10 +158,13 @@ def create_app(service: ContextCrumbService):
         model_config = ConfigDict(protected_namespaces=())
 
         text: str
-        threshold: float = DEFAULT_THRESHOLD
+        threshold: float | None = None
         target_keep_ratio: float | None = None
-        golden: bool = True
-        golden_min_keep_ratio: float = DEFAULT_GOLDEN_MIN_KEEP_RATIO
+        golden: bool = Field(default=True, description="Deprecated compatibility flag; threshold mode is used by default.")
+        golden_min_keep_ratio: float = Field(
+            default=DEFAULT_GOLDEN_MIN_KEEP_RATIO,
+            description="Deprecated compatibility value; adaptive golden mode is no longer used by default.",
+        )
         return_tokens: bool = False
         no_stats: bool = False
 
@@ -168,13 +173,17 @@ def create_app(service: ContextCrumbService):
 
         path: str = Field(description="Local text file path on the machine running contextcrumb serve.")
         encoding: str = "utf-8"
-        threshold: float = DEFAULT_THRESHOLD
+        threshold: float | None = None
         target_keep_ratio: float | None = None
-        golden: bool = True
-        golden_min_keep_ratio: float = DEFAULT_GOLDEN_MIN_KEEP_RATIO
+        golden: bool = Field(default=True, description="Deprecated compatibility flag; threshold mode is used by default.")
+        golden_min_keep_ratio: float = Field(
+            default=DEFAULT_GOLDEN_MIN_KEEP_RATIO,
+            description="Deprecated compatibility value; adaptive golden mode is no longer used by default.",
+        )
         return_tokens: bool = False
         no_stats: bool = False
         force: bool = False
+        content_mode: str | None = Field(default=None, description="auto, prose, code-comments, raw, or refuse.")
 
     app = FastAPI(
         title="ContextCrumb Local Service",
@@ -190,11 +199,16 @@ def create_app(service: ContextCrumbService):
     def compress(request: CompressRequest = Body(...)) -> dict[str, Any]:
         if not request.text.strip():
             raise HTTPException(status_code=400, detail="No input text provided.")
+        config = resolve_config()
         compressor = service.load()
         result = compressor.compress(
             request.text,
-            threshold=request.threshold,
-            target_keep_ratio=request.target_keep_ratio,
+            threshold=config.compression.threshold if request.threshold is None else request.threshold,
+            target_keep_ratio=(
+                config.compression.target_keep_ratio
+                if request.target_keep_ratio is None
+                else request.target_keep_ratio
+            ),
             golden=request.golden,
             golden_min_keep_ratio=request.golden_min_keep_ratio,
             return_tokens=request.return_tokens,
@@ -212,8 +226,13 @@ def create_app(service: ContextCrumbService):
             raise HTTPException(status_code=404, detail=f"File not found: {request.path}")
         if not path.is_file():
             raise HTTPException(status_code=400, detail=f"Not a file: {request.path}")
+        config = resolve_config(start=path)
+        content_mode = request.content_mode or config.compression.content_mode
+        if content_mode not in CONTENT_MODES:
+            raise HTTPException(status_code=400, detail=f"Invalid content_mode: {content_mode}")
         policy = classify_file_for_compression(path)
-        if policy.force_required and not request.force:
+        code_mode_allowed = content_mode in {"auto", "code-comments"} and is_supported_code_file(path, config.code)
+        if policy.force_required and not request.force and not code_mode_allowed:
             raise HTTPException(
                 status_code=400,
                 detail=(
@@ -226,11 +245,17 @@ def create_app(service: ContextCrumbService):
             result = compressor.compress_file(
                 path,
                 encoding=request.encoding,
-                threshold=request.threshold,
-                target_keep_ratio=request.target_keep_ratio,
+                threshold=config.compression.threshold if request.threshold is None else request.threshold,
+                target_keep_ratio=(
+                    config.compression.target_keep_ratio
+                    if request.target_keep_ratio is None
+                    else request.target_keep_ratio
+                ),
                 golden=request.golden,
                 golden_min_keep_ratio=request.golden_min_keep_ratio,
                 return_tokens=request.return_tokens,
+                content_mode=content_mode,
+                config=config,
             )
             result.stats.update(
                 {
