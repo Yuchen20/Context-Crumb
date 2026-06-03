@@ -50,9 +50,9 @@ Arguments:
 | --- | --- | --- |
 | `text` | required | Inline text to compress |
 | `threshold` | `0.5` | Keep probability cutoff for threshold mode |
-| `target_keep_ratio` | `null` | Fixed token budget; overrides golden mode |
-| `golden` | `true` | Use adaptive golden mode |
-| `golden_min_keep_ratio` | `0.333...` | Minimum word-like token ratio in golden mode |
+| `target_keep_ratio` | `null` | Fixed token budget; overrides threshold mode |
+| `golden` | `true` | Deprecated compatibility flag; threshold mode is used by default |
+| `golden_min_keep_ratio` | `0.333...` | Deprecated compatibility value |
 | `return_tokens` | `false` | Include token decisions |
 
 ## Tool: `compress_file`
@@ -65,8 +65,8 @@ Arguments:
 | `encoding` | `utf-8` | File encoding |
 | `threshold` | `0.5` | Keep probability cutoff |
 | `target_keep_ratio` | `null` | Fixed token budget |
-| `golden` | `true` | Use adaptive golden mode |
-| `golden_min_keep_ratio` | `0.333...` | Golden mode floor |
+| `golden` | `true` | Deprecated compatibility flag; threshold mode is used by default |
+| `golden_min_keep_ratio` | `0.333...` | Deprecated compatibility value |
 | `return_tokens` | `false` | Include token decisions |
 | `force` | `false` | Allow syntax-sensitive file types for exploratory compression |
 

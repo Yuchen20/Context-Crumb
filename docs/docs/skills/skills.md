@@ -29,7 +29,7 @@ Core rule:
 contextcrumb load <file>
 ```
 
-The skill recommends golden mode by default, because it is conservative and does not require the agent to tune a ratio.
+The skill uses threshold mode by default, keeping tokens whose aggregated `KEEP` probability is at or above `0.5`.
 
 ## File Loader Skill
 
@@ -39,7 +39,7 @@ Useful command variants:
 
 ```bash
 contextcrumb load notes.txt --target-keep-ratio 0.35
-contextcrumb load notes.txt --no-golden --threshold 0.6
+contextcrumb load notes.txt --threshold 0.6
 contextcrumb load notes.txt --json
 contextcrumb load notes.txt --json --return-tokens
 contextcrumb load notes.txt --model ./artifacts/onnx/contextcrumb-32m

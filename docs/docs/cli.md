@@ -31,7 +31,7 @@ contextcrumb load notes.md --no-stats
 `--receipt` keeps compressed text on stdout and writes a compact receipt to stderr:
 
 ```text
-ContextCrumb receipt: notes.md tokens 12,400->4,100, saved 8,300 (66.9%), keep_ratio=0.331, mode=golden, raw-read-before-exact-use=false
+ContextCrumb receipt: notes.md tokens 12,400->4,100, saved 8,300 (66.9%), keep_ratio=0.331, mode=threshold, raw-read-before-exact-use=false
 ```
 
 With `--json --receipt`, the receipt is included as a top-level JSON field.
@@ -94,7 +94,7 @@ Example fields:
 - `Chars`
 - `Words`
 - `Tokens`
-- Golden cutoff details when using golden mode
+- `Threshold` when using threshold mode
 
 ## Diff
 

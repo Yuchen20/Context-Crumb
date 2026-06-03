@@ -33,10 +33,15 @@ class McpServerConfig:
 
 @dataclass(frozen=True)
 class CompressionOptions:
-    """Per-call compression options exposed through MCP tools."""
+    """Per-call compression options exposed through MCP tools.
 
-    threshold: float = DEFAULT_THRESHOLD
+    ``golden`` fields are retained for client compatibility; threshold mode is
+    used unless ``target_keep_ratio`` is provided.
+    """
+
+    threshold: float | None = None
     target_keep_ratio: float | None = None
     golden: bool = True
     golden_min_keep_ratio: float = DEFAULT_GOLDEN_MIN_KEEP_RATIO
     return_tokens: bool = False
+    content_mode: str | None = None

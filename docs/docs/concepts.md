@@ -23,13 +23,13 @@ For example, compress `summary`, `body`, `description`, or `comment` fields, but
 
 ## Compression Modes
 
-### Golden Mode
+### Threshold Mode
 
-Golden mode is the default.
+Threshold mode is the default.
 
-It finds the largest adjacent probability gap among word-like tokens and uses that as an adaptive cutoff. It also keeps at least `golden_min_keep_ratio` of word-like tokens. The default minimum is `1 / 3`.
+ContextCrumb is trained as a binary keep/delete classifier. After subtokens and sliding-window repeats are aggregated back to original deletion units, threshold mode keeps tokens whose `KEEP` probability is greater than or equal to `threshold`. The default threshold is `0.5`.
 
-Use golden mode when you want a conservative automatic choice:
+Use the default when you want the model's direct keep/delete boundary:
 
 ```bash
 contextcrumb load notes.md
@@ -37,7 +37,7 @@ contextcrumb load notes.md
 
 ### Target Keep Ratio
 
-`target_keep_ratio` keeps the top-scoring tokens near a fixed ratio. It overrides golden mode.
+`target_keep_ratio` keeps the top-scoring tokens near a fixed ratio. It overrides threshold mode.
 
 Use this when you have a budget:
 
@@ -53,14 +53,12 @@ from contextcrumb import compress
 result = compress(text, target_keep_ratio=0.5)
 ```
 
-### Threshold Mode
+### Custom Threshold
 
-Threshold mode keeps tokens whose keep probability is at or above the threshold.
-
-Use it when you want direct model-score control:
+Use a custom threshold when you want direct model-score control:
 
 ```bash
-contextcrumb load notes.md --no-golden --threshold 0.6
+contextcrumb load notes.md --threshold 0.6
 ```
 
 ## Sliding Windows
@@ -91,7 +89,7 @@ Every API path returns or can emit the same conceptual payload:
     "kept_tokens": 55,
     "deleted_tokens": 45,
     "token_keep_ratio": 0.55,
-    "mode": "golden",
+    "mode": "threshold",
     "backend": "onnx"
   }
 }

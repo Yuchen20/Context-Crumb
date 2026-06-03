@@ -39,7 +39,7 @@ Do not guess across environment managers. If local commands are unavailable and 
 - Reduces prompt tokens before a document is sent to an LLM.
 - Keeps token order and deletes low-value wording instead of summarizing.
 - Works locally after the model is cached, avoiding a hosted API dependency.
-- Uses capped golden mode by default, so callers do not need to tune a ratio.
+- Uses the model's fixed keep/delete probability boundary by default: `KEEP >= 0.5`.
 
 ## When To Use
 
@@ -64,7 +64,7 @@ contextcrumb load path/to/file.py --target-keep-ratio 0.75
 contextcrumb service start
 contextcrumb load notes.txt --use-service
 contextcrumb load notes.txt --target-keep-ratio 0.35
-contextcrumb load notes.txt --no-golden --threshold 0.6
+contextcrumb load notes.txt --threshold 0.6
 contextcrumb load notes.txt --json
 contextcrumb load notes.txt --json --return-tokens
 contextcrumb load notes.txt --model ./artifacts/onnx/contextcrumb-32m
@@ -73,7 +73,7 @@ contextcrumb stats --share
 ```
 
 Use `--json` when a caller needs compression stats such as `token_keep_ratio`, `source_path`, `model_windows`, or backend details.
-Golden mode keeps at least one third of word-like tokens by default so a sharp probability gap does not erase too much context. Use `--target-keep-ratio` for an explicit fixed budget, or `--no-golden --threshold <value>` for threshold mode.
+Default threshold mode keeps tokens whose aggregated `KEEP` probability is at or above `0.5`. Use `--target-keep-ratio` for an explicit fixed budget, or `--threshold <value>` for a custom model-score cutoff.
 
 Use the warm local service for multiple files or repeated calls. Use `inspect` or `stats --share` when the user asks whether ContextCrumb helped, or after compressing several files.
 

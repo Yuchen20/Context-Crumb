@@ -451,10 +451,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--target-keep-ratio",
         type=float,
         default=float(os.environ.get("CONTEXTCRUMB_SHRINK_TARGET_KEEP_RATIO", "0.5")),
-        help="Default model keep ratio for catalog prose.",
+        help="Default model keep ratio for catalog prose. Overrides threshold mode.",
     )
-    parser.add_argument("--no-golden", dest="golden", action="store_false", default=True)
-    parser.add_argument("--golden-min-keep-ratio", type=float, default=DEFAULT_GOLDEN_MIN_KEEP_RATIO)
+    parser.add_argument(
+        "--no-golden",
+        dest="golden",
+        action="store_false",
+        default=True,
+        help="Deprecated compatibility flag. Compression uses --threshold unless --target-keep-ratio is set.",
+    )
+    parser.add_argument(
+        "--golden-min-keep-ratio",
+        type=float,
+        default=DEFAULT_GOLDEN_MIN_KEEP_RATIO,
+        help="Deprecated compatibility value; adaptive golden mode is no longer used by default.",
+    )
     parser.add_argument(
         "upstream_command",
         nargs=argparse.REMAINDER,

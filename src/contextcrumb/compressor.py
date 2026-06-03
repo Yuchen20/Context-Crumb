@@ -331,17 +331,15 @@ class ContextCompressor:
         Args:
             text: Input text to compress.
             threshold: Keep tokens with ``KEEP`` probability at or above this
-                value. Ignored unless ``golden=False`` and
-                ``target_keep_ratio`` is not provided.
+                value when ``target_keep_ratio`` is not provided.
             target_keep_ratio: Optional token ratio. When set, ContextCrumb
                 keeps the top-scoring tokens up to this ratio. This overrides
-                golden mode.
-            golden: Use an adaptive cutoff from the largest gap in word-token
-                keep probabilities. Golden mode keeps at least
-                ``golden_min_keep_ratio`` of word-like tokens.
-            golden_min_keep_ratio: Minimum ratio of word-like tokens to keep in
-                golden mode. Use ``target_keep_ratio`` instead when you want an
-                explicit lower compression budget.
+                threshold mode.
+            golden: Deprecated compatibility flag. It is recorded in stats but
+                no longer changes compression behavior.
+            golden_min_keep_ratio: Deprecated compatibility value recorded in
+                stats. The legacy adaptive golden cutoff is no longer used by
+                default compression.
             return_tokens: Include token-level decisions in the result.
 
         Returns:
@@ -353,23 +351,14 @@ class ContextCompressor:
         validate_keep_ratio(target_keep_ratio)
         validate_keep_ratio(golden_min_keep_ratio)
         tokens, keep_probabilities, window_count = self.score_keep_probabilities(text)
-        use_golden = golden and target_keep_ratio is None
-        mode = "golden" if use_golden else "target_keep_ratio" if target_keep_ratio is not None else "threshold"
-        golden_cutoff: GoldenCutoff | None = None
+        mode = "target_keep_ratio" if target_keep_ratio is not None else "threshold"
         decision_threshold = float(threshold)
-        if use_golden:
-            golden_cutoff = compute_golden_cutoff(
-                tokens,
-                keep_probabilities,
-                min_keep_ratio=golden_min_keep_ratio,
-            )
-            decision_threshold = golden_cutoff.cutoff
 
         decisions = build_token_decisions(tokens, keep_probabilities, decision_threshold, target_keep_ratio)
         compressed = build_compressed_text(text, decisions)
         stats = compression_stats(text, compressed)
         kept_tokens = sum(1 for decision in decisions if decision.keep)
-        stats_update: dict[str, float | int | str | None] = {
+        stats_update: dict[str, bool | float | int | str | None] = {
             "input_tokens": len(decisions),
             "kept_tokens": kept_tokens,
             "deleted_tokens": len(decisions) - kept_tokens,
@@ -378,6 +367,8 @@ class ContextCompressor:
             "threshold": decision_threshold,
             "requested_threshold": float(threshold),
             "target_keep_ratio": target_keep_ratio,
+            "requested_golden": bool(golden),
+            "requested_golden_min_keep_ratio": float(golden_min_keep_ratio),
             "max_length": self.max_length,
             "stride": self.stride,
             "model_windows": window_count,
@@ -385,19 +376,6 @@ class ContextCompressor:
             "backend": self.backend,
             "window_batch_size": self.window_batch_size,
         }
-        if golden_cutoff is not None:
-            stats_update.update(
-                {
-                    "golden_cutoff": golden_cutoff.cutoff,
-                    "golden_gap": golden_cutoff.gap,
-                    "golden_keep_ratio": golden_cutoff.keep_ratio,
-                    "golden_keep_count": golden_cutoff.keep_count,
-                    "golden_basis_count": golden_cutoff.basis_count,
-                    "golden_min_keep_ratio": golden_cutoff.min_keep_ratio,
-                    "golden_capped": golden_cutoff.capped,
-                    "golden_basis": "word_like_tokens",
-                }
-            )
         stats.update(stats_update)
         return CompressionResult(
             text=compressed,
@@ -411,11 +389,13 @@ class ContextCompressor:
         path: str | Path,
         *,
         encoding: str = "utf-8",
-        threshold: float = DEFAULT_THRESHOLD,
+        threshold: float | None = DEFAULT_THRESHOLD,
         target_keep_ratio: float | None = None,
         golden: bool = True,
         golden_min_keep_ratio: float = DEFAULT_GOLDEN_MIN_KEEP_RATIO,
         return_tokens: bool = False,
+        content_mode: str | None = None,
+        config: Any | None = None,
     ) -> CompressionResult:
         """Read a text file and compress it for use as LLM or agent context.
 
@@ -427,16 +407,79 @@ class ContextCompressor:
         text = source_path.read_text(encoding=encoding)
         if not text.strip():
             raise ValueError("Input file is empty.")
+        from contextcrumb.code_compression import (
+            compress_code_comments,
+            detect_code_language,
+            is_supported_code_file,
+            raw_file_result,
+        )
+        from contextcrumb.config import CONTENT_MODES, resolve_config
+        from contextcrumb.file_policy import classify_file_for_compression
+
+        resolved_config = config or resolve_config(start=source_path)
+        mode = content_mode or resolved_config.compression.content_mode
+        if mode not in CONTENT_MODES:
+            raise ValueError(f"content_mode must be one of: {', '.join(CONTENT_MODES)}")
+        resolved_threshold = DEFAULT_THRESHOLD if threshold is None else float(threshold)
+        resolved_target_keep_ratio = (
+            target_keep_ratio
+            if target_keep_ratio is not None
+            else resolved_config.compression.target_keep_ratio
+        )
+
+        if mode == "raw":
+            return raw_file_result(text, path=source_path, encoding=encoding, content_mode="raw")
+        if mode == "refuse":
+            raise ValueError(f"Refusing to compress file because content_mode=refuse: {source_path}")
+        if mode == "code-comments":
+            if not is_supported_code_file(source_path, resolved_config.code):
+                raise ValueError(f"Code-aware compression does not support this file type: {source_path}")
+            return compress_code_comments(
+                self,
+                text,
+                path=source_path,
+                encoding=encoding,
+                config=resolved_config.code,
+                threshold=resolved_threshold,
+                target_keep_ratio=resolved_target_keep_ratio,
+                golden=golden,
+                golden_min_keep_ratio=golden_min_keep_ratio,
+            )
+        if mode == "auto":
+            if is_supported_code_file(source_path, resolved_config.code):
+                return compress_code_comments(
+                    self,
+                    text,
+                    path=source_path,
+                    encoding=encoding,
+                    config=resolved_config.code,
+                    threshold=resolved_threshold,
+                    target_keep_ratio=resolved_target_keep_ratio,
+                    golden=golden,
+                    golden_min_keep_ratio=golden_min_keep_ratio,
+                )
+            policy = classify_file_for_compression(source_path)
+            if policy.force_required:
+                if resolved_config.code.unsupported_code == "raw":
+                    return raw_file_result(text, path=source_path, encoding=encoding, content_mode="raw")
+                if resolved_config.code.unsupported_code == "prose":
+                    mode = "prose"
+                else:
+                    language = detect_code_language(source_path) or "unknown"
+                    raise ValueError(f"Unsupported syntax-sensitive file for code-aware compression: {language}")
         result = self.compress(
             text,
-            threshold=threshold,
-            target_keep_ratio=target_keep_ratio,
+            threshold=resolved_threshold,
+            target_keep_ratio=resolved_target_keep_ratio,
             golden=golden,
             golden_min_keep_ratio=golden_min_keep_ratio,
             return_tokens=return_tokens,
         )
         result.stats.update(
             {
+                "content_mode": "prose" if mode == "prose" else "auto",
+                "compressed_span_count": 0,
+                "preserved_code_exact": False,
                 "source_path": str(source_path),
                 "source_encoding": encoding,
             }
@@ -497,11 +540,13 @@ def compress_file(
     stride: int = DEFAULT_STRIDE,
     window_batch_size: int | None = None,
     trust_remote_code: bool = False,
-    threshold: float = DEFAULT_THRESHOLD,
+    threshold: float | None = DEFAULT_THRESHOLD,
     target_keep_ratio: float | None = None,
     golden: bool = True,
     golden_min_keep_ratio: float = DEFAULT_GOLDEN_MIN_KEEP_RATIO,
     return_tokens: bool = False,
+    content_mode: str | None = None,
+    config: Any | None = None,
 ) -> CompressionResult:
     """Load a compressor, read a file, and compress its text."""
     compressor = ContextCompressor(
@@ -523,4 +568,6 @@ def compress_file(
         golden=golden,
         golden_min_keep_ratio=golden_min_keep_ratio,
         return_tokens=return_tokens,
+        content_mode=content_mode,
+        config=config,
     )

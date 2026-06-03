@@ -133,14 +133,13 @@ result = compressor.compress(
 )
 ```
 
-`target_keep_ratio` overrides golden mode and keeps the top-scoring tokens near the requested ratio.
+`target_keep_ratio` overrides threshold mode and keeps the top-scoring tokens near the requested ratio.
 
 ## Threshold Mode
 
 ```python
 result = compressor.compress(
     text,
-    golden=False,
     threshold=0.6,
 )
 ```
@@ -221,9 +220,9 @@ Important keyword arguments:
 | `model_id` | `ymao20/contextcrumb-32m` | Hugging Face model id or local model path |
 | `backend` | `onnx` | Inference backend: `onnx` or `torch` |
 | `device` | `auto` | Inference device |
-| `target_keep_ratio` | `None` | Fixed token budget; overrides golden mode |
-| `golden` | `True` | Use adaptive golden mode |
-| `threshold` | `0.5` | Probability cutoff when golden mode is disabled |
+| `target_keep_ratio` | `None` | Fixed token budget; overrides threshold mode |
+| `golden` | `True` | Deprecated compatibility flag; threshold mode is used by default |
+| `threshold` | `0.5` | Probability cutoff used when `target_keep_ratio` is not set |
 | `return_tokens` | `False` | Include token-level decisions |
 
 ### `compress_file(path, ...)`

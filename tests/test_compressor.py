@@ -79,7 +79,45 @@ class CompressorTests(unittest.TestCase):
         self.assertEqual(cutoff.basis_count, 6)
         self.assertTrue(cutoff.capped)
 
-    def test_target_keep_ratio_overrides_default_golden_mode(self):
+    def test_default_compress_uses_threshold_mode(self):
+        class FakeCompressor(ContextCompressor):
+            def __init__(self):
+                self.max_length = 1024
+                self.stride = 64
+                self.backend = "fake"
+                self.window_batch_size = None
+
+            def score_keep_probabilities(self, text):
+                return tokenize_with_spans(text), [0.9, 0.1, 0.8, 0.2], 1
+
+        result = FakeCompressor().compress("A small test.", return_tokens=True)
+
+        self.assertEqual(result.stats["mode"], "threshold")
+        self.assertEqual(result.stats["threshold"], 0.5)
+        self.assertEqual([token.keep for token in result.tokens], [True, False, True, False])
+        self.assertNotIn("golden_cutoff", result.stats)
+
+    def test_golden_flag_is_legacy_noop_for_threshold_decisions(self):
+        class FakeCompressor(ContextCompressor):
+            def __init__(self):
+                self.max_length = 1024
+                self.stride = 64
+                self.backend = "fake"
+                self.window_batch_size = None
+
+            def score_keep_probabilities(self, text):
+                return tokenize_with_spans(text), [0.9, 0.1, 0.8, 0.2], 1
+
+        default = FakeCompressor().compress("A small test.", golden=True, return_tokens=True)
+        explicit = FakeCompressor().compress("A small test.", golden=False, return_tokens=True)
+
+        self.assertEqual([token.keep for token in default.tokens], [token.keep for token in explicit.tokens])
+        self.assertEqual(default.stats["mode"], "threshold")
+        self.assertEqual(explicit.stats["mode"], "threshold")
+        self.assertTrue(default.stats["requested_golden"])
+        self.assertFalse(explicit.stats["requested_golden"])
+
+    def test_target_keep_ratio_overrides_default_threshold_mode(self):
         class FakeCompressor(ContextCompressor):
             def __init__(self):
                 self.max_length = 1024

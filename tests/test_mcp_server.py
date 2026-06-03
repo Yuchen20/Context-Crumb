@@ -43,10 +43,11 @@ class FakeCompressor:
             text=f"compressed: {text}",
             original_text=text,
             stats={
-                "mode": "target_keep_ratio" if target_keep_ratio is not None else "golden" if golden else "threshold",
+                "mode": "target_keep_ratio" if target_keep_ratio is not None else "threshold",
                 "threshold": threshold,
                 "target_keep_ratio": target_keep_ratio,
-                "golden_min_keep_ratio": golden_min_keep_ratio,
+                "requested_golden": golden,
+                "requested_golden_min_keep_ratio": golden_min_keep_ratio,
             },
             tokens=tokens,
         )
@@ -108,7 +109,7 @@ class McpRuntimeTests(unittest.TestCase):
 
         self.assertEqual(result["text"], "compressed: hello world")
         self.assertEqual(result["original_text"], "hello world")
-        self.assertEqual(result["stats"]["mode"], "golden")
+        self.assertEqual(result["stats"]["mode"], "threshold")
         event = json.loads(Path(os.environ["CONTEXTCRUMB_STATS_FILE"]).read_text(encoding="utf-8"))
         self.assertEqual(event["source"], "mcp")
         self.assertEqual(event["command"], "mcp.compress_text")
@@ -155,7 +156,7 @@ class McpRuntimeTests(unittest.TestCase):
         self.assertEqual(result["stats"]["mode"], "target_keep_ratio")
         self.assertEqual(result["stats"]["threshold"], 0.7)
         self.assertEqual(result["stats"]["target_keep_ratio"], 0.4)
-        self.assertEqual(result["stats"]["golden_min_keep_ratio"], 0.2)
+        self.assertEqual(result["stats"]["requested_golden_min_keep_ratio"], 0.2)
         self.assertIn("tokens", result)
 
     def test_in_process_runtime_reuses_one_compressor(self):
@@ -172,7 +173,7 @@ class McpRuntimeTests(unittest.TestCase):
             return_value={
                 "text": "service text",
                 "original_text": "hello world",
-                "stats": {"mode": "golden"},
+                "stats": {"mode": "threshold"},
             }
         )
         compressor_factory = Mock(side_effect=AssertionError("compressor should not load"))

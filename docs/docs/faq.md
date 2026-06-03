@@ -16,9 +16,11 @@ Use it before sending large prose-heavy context to an LLM or agent. Good inputs 
 
 Avoid using compressed output as the only source for exact syntax or exact wording. Use raw files for code, configs, schemas, diffs, commands, legal text, and direct quotes.
 
-## What is golden mode?
+## What is the default threshold?
 
-Golden mode is the default adaptive cutoff. It finds a natural gap in token keep probabilities while keeping at least one third of word-like tokens.
+The default threshold is `0.5`. ContextCrumb is trained as a binary keep/delete classifier, so the default keeps tokens whose aggregated `KEEP` probability is at or above the classifier boundary.
+
+The old `golden` options are kept for compatibility but no longer change default compression behavior.
 
 ## How do I make output smaller?
 

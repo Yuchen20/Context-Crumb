@@ -35,6 +35,7 @@ class FakeCompressor:
                 "kept_tokens": 1,
                 "deleted_tokens": 1,
                 "token_keep_ratio": 0.5,
+                "mode": "target_keep_ratio" if target_keep_ratio is not None else "threshold",
             },
         )
 
@@ -63,6 +64,7 @@ class FakeCompressor:
                 "kept_tokens": 2,
                 "deleted_tokens": 2,
                 "token_keep_ratio": 0.5,
+                "mode": "target_keep_ratio" if target_keep_ratio is not None else "threshold",
                 "source_path": str(path),
                 "source_encoding": encoding,
             },
@@ -151,7 +153,7 @@ class CliTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             main(["compress", "--text", "   "])
 
-    def test_cli_load_file_defaults_to_golden_mode(self):
+    def test_cli_load_file_defaults_to_threshold_mode(self):
         fake = FakeCompressor()
         output = io.StringIO()
 
@@ -300,7 +302,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["runs"], 1)
         self.assertEqual(payload["tokens_saved"], 1)
 
-    def test_cli_load_target_keep_ratio_overrides_golden_mode(self):
+    def test_cli_load_target_keep_ratio_overrides_threshold_mode(self):
         fake = FakeCompressor()
         output = io.StringIO()
 
@@ -393,7 +395,7 @@ class CliTests(unittest.TestCase):
 
     def test_cli_compress_can_use_service_for_text(self):
         output = io.StringIO()
-        result = CompressionResult(text="service text", original_text="some long text", stats={"mode": "golden"})
+        result = CompressionResult(text="service text", original_text="some long text", stats={"mode": "threshold"})
 
         with patch("contextcrumb.cli.ContextCompressor") as compressor_class:
             with patch("contextcrumb.cli.service_compress_text", return_value=result) as service_compress:
@@ -407,7 +409,7 @@ class CliTests(unittest.TestCase):
 
     def test_cli_service_payload_forwards_no_stats(self):
         output = io.StringIO()
-        result = CompressionResult(text="service text", original_text="some long text", stats={"mode": "golden"})
+        result = CompressionResult(text="service text", original_text="some long text", stats={"mode": "threshold"})
 
         with patch("contextcrumb.cli.service_request") as service_request:
             with patch("contextcrumb.cli.service_compress_text", return_value=result) as service_compress:
@@ -422,7 +424,7 @@ class CliTests(unittest.TestCase):
 
     def test_cli_load_can_use_service_for_file(self):
         output = io.StringIO()
-        result = CompressionResult(text="service file", original_text="file text", stats={"mode": "golden"})
+        result = CompressionResult(text="service file", original_text="file text", stats={"mode": "threshold"})
 
         with tempfile.TemporaryDirectory() as temp_dir:
             input_path = Path(temp_dir) / "input.txt"

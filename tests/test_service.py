@@ -33,10 +33,11 @@ class FakeCompressor:
             text=f"compressed: {text}",
             original_text=text,
             stats={
-                "mode": "target_keep_ratio" if target_keep_ratio is not None else "golden" if golden else "threshold",
+                "mode": "target_keep_ratio" if target_keep_ratio is not None else "threshold",
                 "threshold": threshold,
                 "target_keep_ratio": target_keep_ratio,
-                "golden_min_keep_ratio": golden_min_keep_ratio,
+                "requested_golden": golden,
+                "requested_golden_min_keep_ratio": golden_min_keep_ratio,
             },
         )
 
@@ -93,7 +94,7 @@ class ServiceTests(unittest.TestCase):
         second = client.post("/compress", json={"text": "second text", "target_keep_ratio": 0.4}).json()
 
         self.assertEqual(first["text"], "compressed: first text")
-        self.assertEqual(first["stats"]["mode"], "golden")
+        self.assertEqual(first["stats"]["mode"], "threshold")
         self.assertEqual(second["stats"]["mode"], "target_keep_ratio")
         self.assertEqual(FakeCompressor.instances, 1)
         self.assertTrue(service.status()["model_loaded"])

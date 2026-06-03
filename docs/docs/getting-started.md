@@ -75,7 +75,7 @@ kept words [-deleted words-] kept words
 
 ## Tune Compression
 
-By default, ContextCrumb uses golden mode, an adaptive cutoff that looks for a natural probability gap while keeping at least one third of word-like tokens.
+By default, ContextCrumb keeps tokens whose aggregated `KEEP` probability is at or above `0.5`, the binary classifier decision boundary.
 
 Use a fixed budget when you need predictable output size:
 
@@ -84,10 +84,10 @@ contextcrumb load notes.txt --target-keep-ratio 0.5
 contextcrumb load notes.txt --target-keep-ratio 0.75
 ```
 
-Use threshold mode when you want direct control over the model probability cutoff:
+Use a custom threshold when you want stricter or looser direct probability control:
 
 ```bash
-contextcrumb load notes.txt --no-golden --threshold 0.6
+contextcrumb load notes.txt --threshold 0.6
 ```
 
 ## JSON Output
@@ -108,7 +108,7 @@ The compressed text is in `text`. Useful stats live under `stats`, including tok
     "kept_tokens": 58,
     "deleted_tokens": 42,
     "token_keep_ratio": 0.58,
-    "mode": "golden"
+    "mode": "threshold"
   }
 }
 ```

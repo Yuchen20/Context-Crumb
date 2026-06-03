@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed
+
+- Changed default compression from adaptive golden cutoff to fixed threshold mode at `KEEP >= 0.5`; legacy golden options are now compatibility no-ops.
+
 ## [0.1.1] - 2026-05-30
 
 ### Added

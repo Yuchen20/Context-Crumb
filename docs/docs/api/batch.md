@@ -78,10 +78,10 @@ This avoids repeatedly loading the model.
 
 | Input type | Suggested setting |
 | --- | --- |
-| Internal docs | Golden mode |
+| Internal docs | Default threshold mode |
 | Research dumps | `--target-keep-ratio 0.5` |
 | Meeting notes | `--target-keep-ratio 0.5` to `0.7` |
-| Logs with prose | Golden mode first, then inspect |
+| Logs with prose | Default threshold mode first, then inspect |
 | Code-heavy Markdown | `--target-keep-ratio 0.75` or raw file |
 
 Skip empty files. The CLI does this during batch runs.
